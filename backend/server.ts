@@ -14,7 +14,7 @@ const allowedOrigins = [
   "http://localhost:5173",
   "http://127.0.0.1:5173",
   "https://financeiroplus.vercel.app",
-  process.env.FRONTEND_URL
+  process.env.FRONTEND_URL,
 ].filter(Boolean);
 
 app.use(
@@ -22,9 +22,12 @@ app.use(
     origin: function (origin, callback) {
       // Permite requisições sem origin (Postman, mobile apps, etc)
       if (!origin) return callback(null, true);
-      
+
       // Verifica se a origin está na lista ou termina com .vercel.app
-      if (allowedOrigins.includes(origin) || (origin && origin.endsWith('.vercel.app'))) {
+      if (
+        allowedOrigins.includes(origin) ||
+        (origin && origin.endsWith(".vercel.app"))
+      ) {
         callback(null, true);
       } else {
         callback(new Error("Not allowed by CORS"));
@@ -33,14 +36,34 @@ app.use(
     credentials: true,
     methods: ["GET", "POST", "PUT", "DELETE", "PATCH"],
     allowedHeaders: ["Content-Type", "Authorization"],
-  })
+  }),
 );
 app.use(express.json());
+
+// ====================
+// Rotas de Health Check
+// ====================
+app.get("/", (req, res) => {
+  res.json({
+    message: "Dashboard Financeiro API",
+    status: "online",
+    version: "1.0.0",
+    endpoints: {
+      auth: "/auth/*",
+      api: "/api/*"
+    }
+  });
+});
+
+app.get("/health", (req, res) => {
+  res.json({ status: "healthy", timestamp: new Date().toISOString() });
+});
 
 // ====================
 // Rotas de Autenticação
 // ====================
 app.use("/api/auth", authRoutes);
+app.use("/auth", authRoutes); // Adicionar rota sem /api também
 
 // ====================
 // Endpoints de Convites por Token
