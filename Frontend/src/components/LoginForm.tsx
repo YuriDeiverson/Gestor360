@@ -57,7 +57,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onSwitchToRegister }) => {
               </svg>
             </div>
             <h1 className="text-2xl font-bold text-gray-900 mb-2">
-              Gestor360
+              Financeiro +
             </h1>
             <p className="text-gray-600">Entre na sua conta para continuar</p>
           </div>
