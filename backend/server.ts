@@ -8,11 +8,32 @@ import { authMiddleware, AuthenticatedRequest } from "./middleware.js";
 dotenv.config();
 
 const app = express();
+
+// Configuração de CORS para produção
+const allowedOrigins = [
+  "http://localhost:5173",
+  "http://127.0.0.1:5173",
+  "https://financeiroplus.vercel.app",
+  process.env.FRONTEND_URL
+].filter(Boolean);
+
 app.use(
   cors({
-    origin: ["http://localhost:5173", "http://127.0.0.1:5173"],
+    origin: function (origin, callback) {
+      // Permite requisições sem origin (Postman, mobile apps, etc)
+      if (!origin) return callback(null, true);
+      
+      // Verifica se a origin está na lista ou termina com .vercel.app
+      if (allowedOrigins.includes(origin) || (origin && origin.endsWith('.vercel.app'))) {
+        callback(null, true);
+      } else {
+        callback(new Error("Not allowed by CORS"));
+      }
+    },
     credentials: true,
-  }),
+    methods: ["GET", "POST", "PUT", "DELETE", "PATCH"],
+    allowedHeaders: ["Content-Type", "Authorization"],
+  })
 );
 app.use(express.json());
 
@@ -122,10 +143,9 @@ app.post("/api/invite/:token/accept", async (req, res) => {
 
     // Se o usuário não existe, criar
     if (!user && name && password) {
-      const authService = (await import("./auth.js")).AuthService;
-      const authServiceInstance = new authService();
+      const { authService } = await import("./auth.js");
 
-      const result = await authServiceInstance.register(
+      const result = await authService.register(
         invitation.email,
         password,
         name,
@@ -138,10 +158,9 @@ app.post("/api/invite/:token/accept", async (req, res) => {
     }
 
     // Aceitar o convite
-    const authService = (await import("./auth.js")).AuthService;
-    const authServiceInstance = new authService();
+    const { authService } = await import("./auth.js");
 
-    const success = await authServiceInstance.respondToInvitation(
+    const success = await authService.respondToInvitation(
       user.id,
       invitation.id,
       true,
@@ -151,11 +170,11 @@ app.post("/api/invite/:token/accept", async (req, res) => {
       return res.status(400).json({ error: "Erro ao aceitar convite" });
     }
 
-    // Gerar token de acesso
-    const accessToken = authServiceInstance.generateAccessToken(
-      user.id,
-      user.email,
-    );
+    // Gerar token de acesso manualmente
+    const jwt = (await import("jsonwebtoken")).default;
+    const JWT_SECRET = process.env.JWT_SECRET || "your-super-secret-jwt-key";
+    const payload = { userId: user.id, email: user.email };
+    const accessToken = jwt.sign(payload, JWT_SECRET, { expiresIn: "7d" });
 
     res.json({
       message: "Convite aceito com sucesso",
