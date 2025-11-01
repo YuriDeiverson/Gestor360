@@ -1,0 +1,72 @@
+# Dependências
+node_modules/
+*/node_modules/
+.pnp
+.pnp.js
+
+# Arquivos de ambiente (SENSÍVEL - NÃO COMMITAR)
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+backend/.env
+Frontend/.env
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+*.log
+
+# Cache do sistema operacional
+.DS_Store
+Thumbs.db
+
+# IDEs e editores
+.vscode/*
+!.vscode/extensions.json
+.idea
+*.swp
+*.swo
+*~
+
+# Build
+dist/
+build/
+*/dist/
+*/build/
+.next/
+out/
+
+# Testes
+coverage/
+.nyc_output/
+
+# TypeScript
+*.tsbuildinfo
+
+# Arquivos temporários
+*.tmp
+*.temp
+.cache/
+
+# Arquivos de documentação de desenvolvimento (não necessários no repo)
+CHECKLIST.md
+CONFIGURACAO_EMAIL.md
+CORREÇÕES.md
+CORREÇÕES_MODAIS.md
+SISTEMA_NOTIFICACOES.md
+DEPLOY.md
+
+# Histórico local
+.history/
+
+# Vercel
+.vercel
+
+# Lock files (opcional - descomente se preferir)
+# package-lock.json
+# yarn.lock
+# pnpm-lock.yaml

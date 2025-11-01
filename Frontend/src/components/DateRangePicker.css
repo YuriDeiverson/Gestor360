@@ -1,0 +1,137 @@
+/* Customização do React Date Range */
+.rdrCalendarWrapper {
+  font-family: inherit;
+  color: inherit;
+}
+
+.rdrDateRangeWrapper {
+  gap: 1rem;
+}
+
+.rdrDefinedRangesWrapper {
+  display: none;
+}
+
+.rdrDateDisplayWrapper {
+  background: transparent;
+}
+
+.rdrDateDisplay {
+  margin: 0;
+  background: transparent;
+}
+
+.rdrDateDisplayItem {
+  background: #f9fafb;
+  border: 1px solid #e5e7eb;
+  border-radius: 0.5rem;
+  color: #374151;
+}
+
+.rdrDateDisplayItemActive {
+  background: #10b981;
+  color: white;
+}
+
+.rdrMonthAndYearWrapper {
+  background: transparent;
+  height: auto;
+  padding: 0.5rem;
+}
+
+.rdrMonthAndYearPickers select {
+  background: #f9fafb;
+  border: 1px solid #e5e7eb;
+  border-radius: 0.375rem;
+  padding: 0.25rem 0.5rem;
+  color: #374151;
+}
+
+.rdrMonthPicker,
+.rdrYearPicker {
+  margin: 0 0.25rem;
+}
+
+.rdrWeekDays {
+  padding: 0;
+}
+
+.rdrWeekDay {
+  color: #6b7280;
+  font-weight: 500;
+  font-size: 0.875rem;
+}
+
+.rdrDays {
+  padding: 0;
+}
+
+.rdrDay {
+  background: transparent;
+  color: #374151;
+  border-radius: 0.375rem;
+  margin: 1px;
+}
+
+.rdrDay:not(.rdrDayPassive):hover .rdrDayNumber span {
+  background: #f3f4f6;
+  color: #374151;
+}
+
+.rdrDayToday .rdrDayNumber span {
+  background: #dbeafe;
+  color: #1d4ed8;
+  font-weight: 600;
+}
+
+.rdrDayStartOfMonth .rdrDayNumber span,
+.rdrDayEndOfMonth .rdrDayNumber span,
+.rdrDayStartOfWeek .rdrDayNumber span,
+.rdrDayEndOfWeek .rdrDayNumber span {
+  background: transparent;
+}
+
+.rdrSelected .rdrDayNumber span,
+.rdrInRange .rdrDayNumber span,
+.rdrStartEdge .rdrDayNumber span,
+.rdrEndEdge .rdrDayNumber span {
+  background: #10b981 !important;
+  color: white !important;
+}
+
+.rdrDayPassive .rdrDayNumber span {
+  color: #d1d5db;
+}
+
+.rdrNextPrevButton {
+  background: #f9fafb;
+  border: 1px solid #e5e7eb;
+  color: #6b7280;
+  border-radius: 0.375rem;
+}
+
+.rdrNextPrevButton:hover {
+  background: #f3f4f6;
+  color: #374151;
+}
+
+.rdrPprevButton i,
+.rdrNextButton i {
+  border-color: transparent #6b7280;
+  border-width: 4px 6px;
+}
+
+.rdrNextPrevButton:hover i {
+  border-color: transparent #374151;
+}
+
+/* Ajustes para responsividade */
+@media (max-width: 768px) {
+  .rdrDateRangeWrapper {
+    flex-direction: column;
+  }
+  
+  .rdrCalendarWrapper {
+    width: 100% !important;
+  }
+}
