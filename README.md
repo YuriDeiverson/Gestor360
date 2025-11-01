@@ -108,10 +108,6 @@ npm run build
 - Configure as variáveis de ambiente
 - Faça deploy do código da pasta `backend/`
 
-## 📱 Screenshots
-
-[Adicione screenshots do dashboard aqui]
-
 ## 🤝 Contribuição
 
 1. Fork o projeto
@@ -126,7 +122,7 @@ Este projeto está sob a licença MIT. Veja o arquivo `LICENSE` para mais detalh
 
 ## 👨‍💻 Autor
 
-Desenvolvido com ❤️ por [Seu Nome]
+Desenvolvido com ❤️ por Yuri :)
 
 ---
 
