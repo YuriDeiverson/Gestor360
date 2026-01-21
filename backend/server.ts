@@ -9,9 +9,10 @@ import transacoesRoutes from "./routes/transacoes.js";
 import metasRoutes from "./routes/metas.js";
 import cardsRoutes from "./routes/cards.js";
 
-// Carrega .env (configurações gerais)
+// ====================
+// ENV
+// ====================
 dotenv.config();
-// Depois carrega .env.local (sobrescreve para desenvolvimento local se existir)
 dotenv.config({ path: ".env.local", override: false });
 
 const app = express();
@@ -24,32 +25,43 @@ const allowedOrigins = [
   "http://127.0.0.1:5173",
   "https://financeiroplus.vercel.app",
   process.env.FRONTEND_URL,
-].filter(Boolean);
+].filter(Boolean) as string[];
 
 app.use(
   cors({
-    origin: allowedOrigins,
+    origin(origin, callback) {
+      // Permite chamadas server-to-server ou tools (Postman)
+      if (!origin) return callback(null, true);
+
+      // Permite origens explícitas e qualquer app da Vercel
+      if (
+        allowedOrigins.includes(origin) ||
+        origin.endsWith(".vercel.app")
+      ) {
+        return callback(null, true);
+      }
+
+      return callback(new Error("Not allowed by CORS"));
+    },
     credentials: true,
     methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
     allowedHeaders: ["Content-Type", "Authorization"],
-    optionsSuccessStatus: 200,
-  }),
+  })
 );
 
-app.use(express.json());
+// Preflight (OBRIGATÓRIO no Vercel)
+app.options("*", cors());
 
 // ====================
-// Debug middleware
+// Middlewares
 // ====================
-app.use((req, res, next) => {
-  console.log(`[${new Date().toISOString()}] ${req.method} ${req.path}`);
-  
-  // Adicionar headers CORS manualmente se necessário
-  res.header("Access-Control-Allow-Origin", allowedOrigins.includes(req.headers.origin) ? req.headers.origin : allowedOrigins[0]);
-  res.header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, PATCH, OPTIONS");
-  res.header("Access-Control-Allow-Headers", "Content-Type, Authorization");
-  res.header("Access-Control-Allow-Credentials", "true");
-  
+app.use(express.json());
+
+// Log simples (debug)
+app.use((req, _res, next) => {
+  console.log(
+    `[${new Date().toISOString()}] ${req.method} ${req.originalUrl}`
+  );
   next();
 });
 
@@ -65,7 +77,10 @@ app.get("/", (_req, res) => {
 });
 
 app.get("/health", (_req, res) => {
-  res.json({ status: "healthy", timestamp: new Date().toISOString() });
+  res.json({
+    status: "healthy",
+    timestamp: new Date().toISOString(),
+  });
 });
 
 // ====================
@@ -101,7 +116,7 @@ app.get("/api/invite/:token", async (req, res) => {
           name,
           email
         )
-      `,
+      `
       )
       .eq("invite_token", token)
       .eq("status", "pending")
@@ -123,8 +138,8 @@ app.get("/api/invite/:token", async (req, res) => {
       invitation,
       needsAccount: !existingUser,
     });
-  } catch (error) {
-    console.error("Erro ao buscar convite:", error);
+  } catch (err) {
+    console.error("Erro ao buscar convite:", err);
     res.status(500).json({ error: "Erro interno do servidor" });
   }
 });
@@ -156,7 +171,7 @@ app.post("/api/invite/:token/accept", async (req, res) => {
       const result = await authService.register(
         invitation.email,
         password,
-        name,
+        name
       );
       user = result.user;
     }
@@ -169,8 +184,8 @@ app.post("/api/invite/:token/accept", async (req, res) => {
     await authService.respondToInvitation(user.id, invitation.id, true);
 
     res.json({ ok: true });
-  } catch (error) {
-    console.error("Erro ao aceitar convite:", error);
+  } catch (err) {
+    console.error("Erro ao aceitar convite:", err);
     res.status(500).json({ error: "Erro interno do servidor" });
   }
 });
@@ -182,14 +197,6 @@ app.use("/api/budgets", budgetsRoutes);
 app.use("/api/transacoes", transacoesRoutes);
 app.use("/api/metas", metasRoutes);
 app.use("/api/cards", cardsRoutes);
-
-// ====================
-// 404 Handler - deve vir após todas as rotas
-// ====================
-app.use((req, res) => {
-  console.error(`❌ Rota não encontrada: ${req.method} ${req.path}`);
-  res.status(404).json({ error: "Rota não encontrada", path: req.path });
-});
 
 // ====================
 // Notificações
@@ -204,27 +211,26 @@ app.get(
       .eq("user_id", req.user!.userId)
       .order("created_at", { ascending: false });
 
-    if (error) return res.status(500).json({ error });
+    if (error) {
+      return res.status(500).json({ error });
+    }
 
     res.json(data);
-  },
+  }
 );
 
 // ====================
-// Start
+// 404
 // ====================
-// Em desenvolvimento local, usa porta 3002 para corresponder ao frontend
-// Em produção, usa PORT do ambiente ou 3000 como fallback
-const PORT = process.env.PORT || 3002;
-
-app.listen(PORT, () => {
-  console.log(`🚀 API rodando em http://localhost:${PORT}`);
-  console.log(`📡 Endpoints disponíveis:`);
-  console.log(`   - GET  /api/transacoes`);
-  console.log(`   - GET  /api/budgets`);
-  console.log(`   - GET  /api/metas`);
-  console.log(`   - POST /api/metas`);
-  console.log(`   - PUT  /api/metas/:id`);
-  console.log(`   - DELETE /api/metas/:id`);
-  console.log(`   - GET  /health`);
+app.use((req, res) => {
+  res.status(404).json({
+    error: "Rota não encontrada",
+    method: req.method,
+    path: req.originalUrl,
+  });
 });
+
+// ====================
+// EXPORT (Vercel)
+// ====================
+export default app;
