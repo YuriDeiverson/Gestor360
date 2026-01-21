@@ -229,7 +229,7 @@ app.post("/api/invite/:token/accept", async (req, res) => {
       .single();
 
     if (!user && name && password) {
-      const { authService } = await import("./authService");
+      const { authService } = await import("./auth");
       const result = await authService.register(
         invitation.email,
         password,
@@ -242,7 +242,7 @@ app.post("/api/invite/:token/accept", async (req, res) => {
       return res.status(400).json({ error: "Usuário não encontrado" });
     }
 
-    const { authService } = await import("./authService");
+    const { authService } = await import("./auth");
     await authService.respondToInvitation(user.id, invitation.id, true);
 
     res.json({ ok: true });

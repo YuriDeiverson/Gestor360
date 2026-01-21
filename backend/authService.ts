@@ -3,6 +3,9 @@ import jwt from "jsonwebtoken";
 import { supabase, supabaseAdmin } from "./supabase";
 import { emailService } from "./emailService";
 
+if (!process.env.JWT_SECRET) {
+  throw new Error("JWT_SECRET não definido");
+}
 const JWT_SECRET = process.env.JWT_SECRET;
 const JWT_EXPIRES_IN = "7d";
 
@@ -183,9 +186,6 @@ class AuthService {
 
   // Gerar tokens JWT
   private generateTokens(user: User) {
-    if (!JWT_SECRET) {
-      throw new Error("JWT_SECRET não definido");
-    }
     const payload: JWTPayload = { userId: user.id, email: user.email };
 
     const accessToken = jwt.sign(payload, JWT_SECRET, {
@@ -202,9 +202,6 @@ class AuthService {
   // Verificar token
   verifyToken(token: string): JWTPayload {
     try {
-      if (!JWT_SECRET) {
-        throw new Error("JWT_SECRET não definido");
-      }
       return jwt.verify(token, JWT_SECRET) as JWTPayload;
     } catch (error) {
       throw new Error("Token inválido");
@@ -388,6 +385,7 @@ class AuthService {
           message,
           expires_at,
           created_at,
+          invite_token,
           dashboards (name),
           inviter:users!inviter_id (name)
         `,
@@ -396,15 +394,23 @@ class AuthService {
 
       if (error) throw error;
 
+      const inviter = (invitation as any).inviter;
+      const dashboards = (invitation as any).dashboards;
+
+      const inviterName = Array.isArray(inviter) ? inviter[0]?.name : inviter?.name;
+      const dashboardName = Array.isArray(dashboards)
+        ? dashboards[0]?.name
+        : dashboards?.name;
+
       // Criar notificação interna para o usuário
       await this.createNotification(
         invitee.id,
         "dashboard_invite",
         "Novo Convite para Dashboard",
         `${
-          invitation.inviter?.name || "Alguém"
+          inviterName || "Alguém"
         } convidou você para participar do dashboard "${
-          invitation.dashboards?.name || "Dashboard"
+          dashboardName || "Dashboard"
         }".`,
         invitation.id,
       );
@@ -413,8 +419,8 @@ class AuthService {
       try {
         await emailService.sendDashboardInvite(
           inviteeEmail,
-          invitation.inviter?.name || "Usuário",
-          invitation.dashboards?.name || "Dashboard",
+          inviterName || "Usuário",
+          dashboardName || "Dashboard",
           invitation.invite_token,
           message,
         );
@@ -433,9 +439,9 @@ class AuthService {
       return {
         id: invitation.id,
         dashboard_id: invitation.dashboard_id,
-        dashboard_name: invitation.dashboards?.name || "Dashboard",
+        dashboard_name: dashboardName || "Dashboard",
         inviter_id: invitation.inviter_id,
-        inviter_name: invitation.inviter?.name || "Usuário",
+        inviter_name: inviterName || "Usuário",
         invitee_email: invitation.invitee_email,
         status: invitation.status,
         message: invitation.message,
@@ -475,18 +481,27 @@ class AuthService {
 
       if (error) throw error;
 
-      return data.map((invitation: any) => ({
+      return (data as any[]).map((invitation: any) => {
+        const inviterName = Array.isArray(invitation.inviter)
+          ? invitation.inviter[0]?.name
+          : invitation.inviter?.name;
+        const dashboardName = Array.isArray(invitation.dashboards)
+          ? invitation.dashboards[0]?.name
+          : invitation.dashboards?.name;
+
+        return {
         id: invitation.id,
         dashboard_id: invitation.dashboard_id,
-        dashboard_name: invitation.dashboards?.name || "Dashboard",
+        dashboard_name: dashboardName || "Dashboard",
         inviter_id: invitation.inviter_id,
-        inviter_name: invitation.inviter?.name || "Usuário",
+        inviter_name: inviterName || "Usuário",
         invitee_email: invitation.invitee_email,
         status: invitation.status,
         message: invitation.message,
         expires_at: invitation.expires_at,
         created_at: invitation.created_at,
-      }));
+        };
+      });
     } catch (error) {
       console.error("Erro ao buscar convites:", error);
       throw error;
