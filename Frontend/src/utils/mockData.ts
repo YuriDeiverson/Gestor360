@@ -82,8 +82,7 @@ export const mockTransactions: Transaction[] = [
     type: "expense",
     status: "pending",
     account: "Cartão de Crédito",
-    industry: "Tecnologia",
-    method: "Cartão de Crédito",
+        method: "Cartão de Crédito",
     category: "Tecnologia",
     installments: 12,
     currentInstallment: 3,
@@ -115,8 +114,7 @@ export const mockTransactions: Transaction[] = [
     type: "expense",
     status: "pending",
     account: "Cartão de Crédito",
-    industry: "Educação",
-    method: "Cartão de Crédito",
+        method: "Cartão de Crédito",
     category: "Educação",
     installments: 6,
     currentInstallment: 1,
@@ -133,7 +131,6 @@ export const mockTransactions: Transaction[] = [
     type: "expense",
     status: "completed",
     account: "Conta Corrente",
-    industry: "Alimentação",
     method: "Débito",
     category: "Alimentação",
   },
@@ -145,7 +142,6 @@ export const mockTransactions: Transaction[] = [
     type: "income",
     status: "completed",
     account: "Conta Corrente",
-    industry: "Geral",
     method: "PIX",
     category: "Salário",
   },
@@ -161,6 +157,7 @@ export const mockGoals: Goal[] = [
     currentAmount: 7500,
     deadline: "2025-12-31",
     category: "Lazer",
+    budgetId: "budget1",
   },
   {
     id: "goal2",
@@ -169,6 +166,7 @@ export const mockGoals: Goal[] = [
     currentAmount: 45000,
     deadline: "2026-06-30",
     category: "Moradia",
+    budgetId: "budget2",
   },
   {
     id: "goal3",
@@ -177,14 +175,15 @@ export const mockGoals: Goal[] = [
     currentAmount: 14000,
     deadline: "2024-12-31",
     category: "Educação",
+    budgetId: "budget3",
   },
 ];
 
 export const mockBudgetCategories: BudgetCategory[] = [
-  { id: "cat1", name: "Alimentação", budgetedAmount: 1500 },
-  { id: "cat2", name: "Transporte", budgetedAmount: 400 },
-  { id: "cat3", name: "Lazer", budgetedAmount: 800 },
-  { id: "cat4", name: "Moradia", budgetedAmount: 2500 },
+  { id: "cat1", name: "Alimentação", budgetedAmount: 1500, color: "#ef4444", type: "expense" },
+  { id: "cat2", name: "Transporte", budgetedAmount: 400, color: "#3b82f6", type: "expense" },
+  { id: "cat3", name: "Lazer", budgetedAmount: 800, color: "#10b981", type: "expense" },
+  { id: "cat4", name: "Moradia", budgetedAmount: 2500, color: "#f59e0b", type: "expense" },
 ];
 
 export const availableAccounts = [...ACCOUNTS];

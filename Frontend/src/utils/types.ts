@@ -97,6 +97,7 @@ export interface Goal {
    * Goal também referencia um orçamento
    */
   budgetId: string;
+  category?: string;
 }
 
 export interface Card {

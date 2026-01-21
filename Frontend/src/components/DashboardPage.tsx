@@ -339,8 +339,7 @@ const DashboardPage: React.FC = () => {
       const apiTransaction = {
   descricao: editedTransaction.description,
   valor: editedTransaction.amount,
-  tipo:
-    editedTransaction.type === "income" ? "receita" : "despesa",
+  tipo: (editedTransaction.type === "income" ? "receita" : "despesa") as any,
   budget_id: editedTransaction.budgetId,
   data: editedTransaction.date,
   dashboard_id: currentDashboard?.id,
@@ -352,7 +351,7 @@ const DashboardPage: React.FC = () => {
   method: editedTransaction.method,
   account: editedTransaction.account,
   status: editedTransaction.status,
-};
+} as any;
 
 
       await transactionsApi.update(editedTransaction.id, apiTransaction);
