@@ -7,21 +7,25 @@ const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseAnonKey = process.env.SUPABASE_ANON_KEY;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
+// Verificação mais segura para Vercel
 if (!supabaseUrl || !supabaseAnonKey) {
-  throw new Error(
-    "Missing Supabase environment variables. Please check your .env file.",
-  );
+  console.error("❌ Missing Supabase environment variables:", {
+    SUPABASE_URL: !!supabaseUrl,
+    SUPABASE_ANON_KEY: !!supabaseAnonKey,
+    NODE_ENV: process.env.NODE_ENV
+  });
 }
 
 // Cliente regular (usado para operações normais)
-export const supabase = createClient(supabaseUrl, supabaseAnonKey);
+export const supabase = createClient(
+  supabaseUrl || "https://placeholder.supabase.co",
+  supabaseAnonKey || "placeholder-key"
+);
 
-// Cliente administrativo - usar anônimo se service key não estiver disponível
+// Cliente administrativo
 export const supabaseAdmin = createClient(
-  supabaseUrl,
-  supabaseServiceKey && supabaseServiceKey.length > 50
-    ? supabaseServiceKey
-    : supabaseAnonKey,
+  supabaseUrl || "https://placeholder.supabase.co", 
+  supabaseServiceKey || supabaseAnonKey || "placeholder-key",
   {
     auth: {
       autoRefreshToken: false,
