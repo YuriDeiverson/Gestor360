@@ -2,7 +2,7 @@ import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";
 
-import { supabaseAdmin } from "./supabase.js";
+import { supabaseAdmin } from "./supabase";
 import authRoutes from "./routes/auth.js";
 import { authMiddleware, AuthenticatedRequest } from "./middleware.js";
 import budgetsRoutes from "./routes/budgets.js";
