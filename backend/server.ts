@@ -30,30 +30,46 @@ const allowedOrigins = [
 // ✅ PRE-FLIGHT GARANTIDO (OBRIGATÓRIO NA VERCEL) - DEVE VIR ANTES DE TUDO
 app.use((req, res, next) => {
   try {
-    console.log(`[${new Date().toISOString()}] ${req.method} ${req.originalUrl} - Origin: ${req.headers.origin}`);
-    
+    console.log(
+      `[${new Date().toISOString()}] ${req.method} ${req.originalUrl} - Origin: ${req.headers.origin}`,
+    );
+
     const origin = req.headers.origin;
     const isAllowedOrigin = allowedOrigins.includes(origin || "");
-    
+
     // Set CORS headers for ALL responses - including errors
-    res.setHeader("Access-Control-Allow-Origin", isAllowedOrigin ? (origin || allowedOrigins[0]) : allowedOrigins[0]);
-    res.setHeader("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, PATCH, OPTIONS");
-    res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
+    res.setHeader(
+      "Access-Control-Allow-Origin",
+      isAllowedOrigin ? origin || allowedOrigins[0] : allowedOrigins[0],
+    );
+    res.setHeader(
+      "Access-Control-Allow-Methods",
+      "GET, POST, PUT, DELETE, PATCH, OPTIONS",
+    );
+    res.setHeader(
+      "Access-Control-Allow-Headers",
+      "Content-Type, Authorization",
+    );
     res.setHeader("Access-Control-Allow-Credentials", "true");
-    
-    console.log(`CORS headers set for origin: ${res.getHeader("Access-Control-Allow-Origin")}`);
-    
+
+    console.log(
+      `CORS headers set for origin: ${res.getHeader("Access-Control-Allow-Origin")}`,
+    );
+
     // Handle preflight requests immediately - BEFORE any other middleware
     if (req.method === "OPTIONS") {
       console.log("Handling OPTIONS request - returning 204");
       return res.status(204).end();
     }
-    
+
     next();
   } catch (error) {
     console.error("Error in CORS middleware:", error);
     // Even on error, try to send CORS headers
-    res.setHeader("Access-Control-Allow-Origin", req.headers.origin || "https://financeiroplus.vercel.app");
+    res.setHeader(
+      "Access-Control-Allow-Origin",
+      req.headers.origin || "https://financeiroplus.vercel.app",
+    );
     res.setHeader("Access-Control-Allow-Credentials", "true");
     return res.status(500).json({ error: "CORS middleware error" });
   }
@@ -104,8 +120,14 @@ app.get("/health", (_req, res) => {
 // Test CORS endpoint
 app.options("/test-cors", (req, res) => {
   console.log("Test CORS OPTIONS endpoint hit");
-  res.header("Access-Control-Allow-Origin", req.headers.origin || "https://financeiroplus.vercel.app");
-  res.header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, PATCH, OPTIONS");
+  res.header(
+    "Access-Control-Allow-Origin",
+    req.headers.origin || "https://financeiroplus.vercel.app",
+  );
+  res.header(
+    "Access-Control-Allow-Methods",
+    "GET, POST, PUT, DELETE, PATCH, OPTIONS",
+  );
   res.header("Access-Control-Allow-Headers", "Content-Type, Authorization");
   res.header("Access-Control-Allow-Credentials", "true");
   res.status(204).end();
@@ -113,9 +135,15 @@ app.options("/test-cors", (req, res) => {
 
 app.get("/test-cors", (req, res) => {
   console.log("Test CORS GET endpoint hit");
-  res.header("Access-Control-Allow-Origin", req.headers.origin || "https://financeiroplus.vercel.app");
+  res.header(
+    "Access-Control-Allow-Origin",
+    req.headers.origin || "https://financeiroplus.vercel.app",
+  );
   res.header("Access-Control-Allow-Credentials", "true");
-  res.json({ message: "CORS test successful", timestamp: new Date().toISOString() });
+  res.json({
+    message: "CORS test successful",
+    timestamp: new Date().toISOString(),
+  });
 });
 
 // ====================
@@ -201,7 +229,7 @@ app.post("/api/invite/:token/accept", async (req, res) => {
       .single();
 
     if (!user && name && password) {
-      const { authService } = await import("./auth");
+      const { authService } = await import("./authService");
       const result = await authService.register(
         invitation.email,
         password,
@@ -214,7 +242,7 @@ app.post("/api/invite/:token/accept", async (req, res) => {
       return res.status(400).json({ error: "Usuário não encontrado" });
     }
 
-    const { authService } = await import("./auth");
+    const { authService } = await import("./authService");
     await authService.respondToInvitation(user.id, invitation.id, true);
 
     res.json({ ok: true });
@@ -256,24 +284,37 @@ app.get(
 // ====================
 // GLOBAL ERROR HANDLER
 // ====================
-app.use((error: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
-  console.error("Global error handler:", {
-    error: error.message,
-    stack: error.stack,
-    method: req.method,
-    url: req.originalUrl,
-    headers: req.headers
-  });
-  
-  // Ensure CORS headers even on error
-  res.header("Access-Control-Allow-Origin", req.headers.origin || "https://financeiroplus.vercel.app");
-  res.header("Access-Control-Allow-Credentials", "true");
-  
-  res.status(500).json({
-    error: "Internal server error",
-    message: process.env.NODE_ENV === "development" ? error.message : "Something went wrong"
-  });
-});
+app.use(
+  (
+    error: any,
+    req: express.Request,
+    res: express.Response,
+    next: express.NextFunction,
+  ) => {
+    console.error("Global error handler:", {
+      error: error.message,
+      stack: error.stack,
+      method: req.method,
+      url: req.originalUrl,
+      headers: req.headers,
+    });
+
+    // Ensure CORS headers even on error
+    res.header(
+      "Access-Control-Allow-Origin",
+      req.headers.origin || "https://financeiroplus.vercel.app",
+    );
+    res.header("Access-Control-Allow-Credentials", "true");
+
+    res.status(500).json({
+      error: "Internal server error",
+      message:
+        process.env.NODE_ENV === "development"
+          ? error.message
+          : "Something went wrong",
+    });
+  },
+);
 
 // ====================
 // 404

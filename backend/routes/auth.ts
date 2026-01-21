@@ -5,6 +5,17 @@ import { authMiddleware, AuthenticatedRequest } from "../middleware";
 const router = express.Router();
 
 /* =====================================================
+   HEALTH CHECK
+===================================================== */
+router.get("/health", (req, res) => {
+  res.json({
+    status: "healthy",
+    service: "Auth API",
+    timestamp: new Date().toISOString(),
+  });
+});
+
+/* =====================================================
    REGISTRO
 ===================================================== */
 router.post("/register", async (req, res) => {
