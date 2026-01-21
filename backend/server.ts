@@ -3,12 +3,12 @@ import cors from "cors";
 import dotenv from "dotenv";
 
 import { supabaseAdmin } from "./supabase";
-import authRoutes from "./routes/auth.js";
-import { authMiddleware, AuthenticatedRequest } from "./middleware.js";
-import budgetsRoutes from "./routes/budgets.js";
-import transacoesRoutes from "./routes/transacoes.js";
-import metasRoutes from "./routes/metas.js";
-import cardsRoutes from "./routes/cards.js";
+import authRoutes from "./routes/auth";
+import { authMiddleware, AuthenticatedRequest } from "./middleware";
+import budgetsRoutes from "./routes/budgets";
+import transacoesRoutes from "./routes/transacoes";
+import metasRoutes from "./routes/metas";
+import cardsRoutes from "./routes/cards";
 
 // ====================
 // ENV
@@ -157,7 +157,7 @@ app.post("/api/invite/:token/accept", async (req, res) => {
       .single();
 
     if (!user && name && password) {
-      const { authService } = await import("./auth.js");
+      const { authService } = await import("./auth");
       const result = await authService.register(
         invitation.email,
         password,
@@ -170,7 +170,7 @@ app.post("/api/invite/:token/accept", async (req, res) => {
       return res.status(400).json({ error: "Usuário não encontrado" });
     }
 
-    const { authService } = await import("./auth.js");
+    const { authService } = await import("./auth");
     await authService.respondToInvitation(user.id, invitation.id, true);
 
     res.json({ ok: true });

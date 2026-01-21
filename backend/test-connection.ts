@@ -1,4 +1,4 @@
-import { supabase } from "./supabase.js";
+import { supabase } from "./supabase";
 
 // Script de teste da conexão com Supabase
 async function testarConexao() {
