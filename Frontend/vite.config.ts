@@ -17,15 +17,6 @@ export default defineConfig(({ mode }) => {
         },
       },
     }
-  } else {
-    build = {
-      outDir: 'dist',
-      rollupOptions: {
-        output: {
-          manualChunks: undefined,
-        },
-      },
-    }
 
     esbuild = {}
 
