@@ -8,7 +8,7 @@ console.log("🌐 API_BASE_URL configurada:", API_BASE_URL);
 // Função para testar conectividade
 const testApiConnection = async () => {
   try {
-    const response = await fetch(`${API_BASE_URL}/api/health`, {
+    const response = await fetch(`${API_BASE_URL}/health`, {
       method: "GET",
       headers: {
         "Content-Type": "application/json",

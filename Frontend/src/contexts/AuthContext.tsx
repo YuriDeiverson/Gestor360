@@ -1,4 +1,5 @@
 import React, { createContext, useEffect, useState } from "react";
+import { API_BASE_URL } from "../utils/api";
 
 export interface User {
   id: string;
@@ -57,8 +58,6 @@ interface AuthContextData {
 const AuthContext = createContext<AuthContextData>({} as AuthContextData);
 
 export { AuthContext };
-
-const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:3002";
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
   children,

@@ -38,7 +38,7 @@ const InvitePage: React.FC = () => {
 
   const fetchInviteInfo = async () => {
     try {
-      const response = await fetch(`${import.meta.env.VITE_API_URL || "http://localhost:3002"}/api/invite/${token}`);
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || "http://localhost:3002"}/api/invite/${token}`);
 
       if (response.ok) {
         const data = await response.json();
