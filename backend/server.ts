@@ -29,21 +29,31 @@ const allowedOrigins = [
 
 // ✅ PRE-FLIGHT GARANTIDO (OBRIGATÓRIO NA VERCEL) - DEVE VIR ANTES DE TUDO
 app.use((req, res, next) => {
-  const origin = req.headers.origin;
-  const isAllowedOrigin = allowedOrigins.includes(origin || "");
-  
-  // Set CORS headers for all requests
-  res.header("Access-Control-Allow-Origin", isAllowedOrigin ? origin : allowedOrigins[0]);
-  res.header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, PATCH, OPTIONS");
-  res.header("Access-Control-Allow-Headers", "Content-Type, Authorization");
-  res.header("Access-Control-Allow-Credentials", "true");
-  
-  // Handle preflight requests immediately
-  if (req.method === "OPTIONS") {
-    return res.status(204).end();
+  try {
+    console.log(`[${new Date().toISOString()}] ${req.method} ${req.originalUrl} - Origin: ${req.headers.origin}`);
+    
+    const origin = req.headers.origin;
+    const isAllowedOrigin = allowedOrigins.includes(origin || "");
+    
+    // Set CORS headers for all requests
+    res.header("Access-Control-Allow-Origin", isAllowedOrigin ? origin : allowedOrigins[0]);
+    res.header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, PATCH, OPTIONS");
+    res.header("Access-Control-Allow-Headers", "Content-Type, Authorization");
+    res.header("Access-Control-Allow-Credentials", "true");
+    
+    console.log(`CORS headers set for origin: ${res.getHeader("Access-Control-Allow-Origin")}`);
+    
+    // Handle preflight requests immediately
+    if (req.method === "OPTIONS") {
+      console.log("Handling OPTIONS request - returning 204");
+      return res.status(204).end();
+    }
+    
+    next();
+  } catch (error) {
+    console.error("Error in CORS middleware:", error);
+    return res.status(500).json({ error: "CORS middleware error" });
   }
-  
-  next();
 });
 
 // Then apply cors middleware for additional safety
@@ -77,6 +87,7 @@ app.get("/", (_req, res) => {
     message: "Dashboard Financeiro API",
     status: "online",
     version: "1.0.0",
+    timestamp: new Date().toISOString(),
   });
 });
 
@@ -85,6 +96,23 @@ app.get("/health", (_req, res) => {
     status: "healthy",
     timestamp: new Date().toISOString(),
   });
+});
+
+// Test CORS endpoint
+app.options("/test-cors", (req, res) => {
+  console.log("Test CORS OPTIONS endpoint hit");
+  res.header("Access-Control-Allow-Origin", req.headers.origin || "https://financeiroplus.vercel.app");
+  res.header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, PATCH, OPTIONS");
+  res.header("Access-Control-Allow-Headers", "Content-Type, Authorization");
+  res.header("Access-Control-Allow-Credentials", "true");
+  res.status(204).end();
+});
+
+app.get("/test-cors", (req, res) => {
+  console.log("Test CORS GET endpoint hit");
+  res.header("Access-Control-Allow-Origin", req.headers.origin || "https://financeiroplus.vercel.app");
+  res.header("Access-Control-Allow-Credentials", "true");
+  res.json({ message: "CORS test successful", timestamp: new Date().toISOString() });
 });
 
 // ====================
@@ -222,6 +250,28 @@ app.get(
     res.json(data);
   },
 );
+
+// ====================
+// GLOBAL ERROR HANDLER
+// ====================
+app.use((error: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
+  console.error("Global error handler:", {
+    error: error.message,
+    stack: error.stack,
+    method: req.method,
+    url: req.originalUrl,
+    headers: req.headers
+  });
+  
+  // Ensure CORS headers even on error
+  res.header("Access-Control-Allow-Origin", req.headers.origin || "https://financeiroplus.vercel.app");
+  res.header("Access-Control-Allow-Credentials", "true");
+  
+  res.status(500).json({
+    error: "Internal server error",
+    message: process.env.NODE_ENV === "development" ? error.message : "Something went wrong"
+  });
+});
 
 // ====================
 // 404
