@@ -116,7 +116,7 @@ router.post("/login", async (req, res) => {
 router.get("/me", authMiddleware, async (req: AuthenticatedRequest, res) => {
   try {
     const { data: user, error } = await (
-      await import("../supabase.js")
+      await import("../supabase")
     ).supabaseAdmin
       .from("users")
       .select("id, email, name, avatar_url, created_at")
