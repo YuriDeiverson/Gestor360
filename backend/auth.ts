@@ -1,6 +1,6 @@
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
-import { supabase, supabaseAdmin } from "./supabase.js";
+import { supabase, supabaseAdmin } from "./supabase";
 import { emailService } from "./emailService.js";
 
 const JWT_SECRET = process.env.JWT_SECRET || "your-super-secret-jwt-key";
