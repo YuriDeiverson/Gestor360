@@ -3,9 +3,6 @@ import jwt from "jsonwebtoken";
 import { supabase, supabaseAdmin } from "./supabase";
 import { emailService } from "./emailService";
 
-if (!process.env.JWT_SECRET) {
-  throw new Error("JWT_SECRET não definido");
-}
 const JWT_SECRET = process.env.JWT_SECRET;
 const JWT_EXPIRES_IN = "7d";
 
@@ -186,6 +183,9 @@ class AuthService {
 
   // Gerar tokens JWT
   private generateTokens(user: User) {
+    if (!JWT_SECRET) {
+      throw new Error("JWT_SECRET não definido");
+    }
     const payload: JWTPayload = { userId: user.id, email: user.email };
 
     const accessToken = jwt.sign(payload, JWT_SECRET, {
@@ -202,6 +202,9 @@ class AuthService {
   // Verificar token
   verifyToken(token: string): JWTPayload {
     try {
+      if (!JWT_SECRET) {
+        throw new Error("JWT_SECRET não definido");
+      }
       return jwt.verify(token, JWT_SECRET) as JWTPayload;
     } catch (error) {
       throw new Error("Token inválido");
