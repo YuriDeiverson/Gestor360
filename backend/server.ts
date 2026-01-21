@@ -27,6 +27,26 @@ const allowedOrigins = [
   "https://financeiroplus.vercel.app",
 ];
 
+// ✅ PRE-FLIGHT GARANTIDO (OBRIGATÓRIO NA VERCEL) - DEVE VIR ANTES DE TUDO
+app.use((req, res, next) => {
+  const origin = req.headers.origin;
+  const isAllowedOrigin = allowedOrigins.includes(origin || "");
+  
+  // Set CORS headers for all requests
+  res.header("Access-Control-Allow-Origin", isAllowedOrigin ? origin : allowedOrigins[0]);
+  res.header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, PATCH, OPTIONS");
+  res.header("Access-Control-Allow-Headers", "Content-Type, Authorization");
+  res.header("Access-Control-Allow-Credentials", "true");
+  
+  // Handle preflight requests immediately
+  if (req.method === "OPTIONS") {
+    return res.status(204).end();
+  }
+  
+  next();
+});
+
+// Then apply cors middleware for additional safety
 app.use(
   cors({
     origin: allowedOrigins,
@@ -37,19 +57,6 @@ app.use(
     optionsSuccessStatus: 204,
   }),
 );
-
-// ✅ PRE-FLIGHT GARANTIDO (OBRIGATÓRIO NA VERCEL)
-app.use((req, res, next) => {
-  res.header("Access-Control-Allow-Origin", allowedOrigins.includes(req.headers.origin || "") ? req.headers.origin : allowedOrigins[0]);
-  res.header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, PATCH, OPTIONS");
-  res.header("Access-Control-Allow-Headers", "Content-Type, Authorization");
-  res.header("Access-Control-Allow-Credentials", "true");
-  
-  if (req.method === "OPTIONS") {
-    return res.status(204).end();
-  }
-  next();
-});
 
 // ====================
 // MIDDLEWARES

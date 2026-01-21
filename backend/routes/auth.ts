@@ -7,8 +7,12 @@ const router = express.Router();
 // =====================================================
 // PRE-FLIGHT OPTIONS (OBRIGATÓRIO NA VERCEL)
 // =====================================================
-router.options("*", (_req, res) => {
-  res.sendStatus(204);
+router.options("*", (req, res) => {
+  res.header("Access-Control-Allow-Origin", req.headers.origin || "https://financeiroplus.vercel.app");
+  res.header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, PATCH, OPTIONS");
+  res.header("Access-Control-Allow-Headers", "Content-Type, Authorization");
+  res.header("Access-Control-Allow-Credentials", "true");
+  res.status(204).end();
 });
 
 // =====================================================
