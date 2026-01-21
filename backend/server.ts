@@ -119,7 +119,6 @@ app.get("/test-cors", (req, res) => {
 // AUTH
 // ====================
 app.use("/api/auth", authRoutes);
-app.use("/auth", authRoutes);
 
 // ====================
 // CONVITES
