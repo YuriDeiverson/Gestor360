@@ -181,7 +181,7 @@ const CategoriesPage: React.FC<CategoriesPageProps> = ({
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
 
   const handleAddCategory = (data: CategoryFormData) => {
-    addCategory(data);
+    addCategory(data as any);
     setIsAddModalOpen(false);
   };
 
@@ -190,7 +190,7 @@ const CategoriesPage: React.FC<CategoriesPageProps> = ({
       editCategory({
         ...editingCategory,
         ...data,
-      });
+      } as any);
     }
     setEditingCategory(null);
   };

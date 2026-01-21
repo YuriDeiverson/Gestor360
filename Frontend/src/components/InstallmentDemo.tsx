@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { TransactionTable } from "./TransactionTable";
+import TransactionTable from "./TransactionTable";
 import { Transaction } from "../utils/types";
 
 const InstallmentDemo: React.FC = () => {
@@ -15,7 +15,6 @@ const InstallmentDemo: React.FC = () => {
       date: "2024-11-01",
       account: "Cartão de Crédito",
       status: "pending",
-      industry: "Tecnologia",
       method: "Cartão de Crédito",
       installments: 12,
       currentInstallment: 1,
@@ -30,8 +29,7 @@ const InstallmentDemo: React.FC = () => {
       date: "2024-11-01",
       account: "Conta Corrente",
       status: "completed",
-      industry: "Tecnologia",
-      method: "PIX",
+            method: "PIX",
     },
     {
       id: "3",
@@ -44,7 +42,6 @@ const InstallmentDemo: React.FC = () => {
       date: "2024-11-01",
       account: "Cartão de Crédito",
       status: "pending",
-      industry: "Educação",
       method: "Cartão de Crédito",
       installments: 12,
       currentInstallment: 1,

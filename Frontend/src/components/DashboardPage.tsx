@@ -295,7 +295,7 @@ const DashboardPage: React.FC = () => {
       const apiTransaction = {
         descricao: newTransaction.description,
         valor: newTransaction.amount,
-        tipo: newTransaction.type === "income" ? "receita" : "despesa",
+        tipo: (newTransaction.type === "income" ? "receita" : "despesa") as any,
         budget_id: budgetId ?? null,
         data: newTransaction.date,
         dashboard_id: currentDashboard.id,

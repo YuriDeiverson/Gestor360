@@ -252,7 +252,7 @@ const BudgetsPage: React.FC<BudgetsPageProps> = ({
         isOpen={isAddModalOpen}
         onClose={() => setAddModalOpen(false)}
         onAddBudget={(budget) => {
-          addBudget(budget);
+          addBudget(budget as any);
           setAddModalOpen(false);
         }}
       />
@@ -262,10 +262,10 @@ const BudgetsPage: React.FC<BudgetsPageProps> = ({
           isOpen={!!editingBudget}
           onClose={() => setEditingBudget(null)}
           onEditBudget={(updated) => {
-            editBudget(updated);
+            editBudget(updated as any);
             setEditingBudget(null);
           }}
-          budgetCategory={editingBudget}
+          budgetCategory={editingBudget as any}
         />
       )}
     </div>

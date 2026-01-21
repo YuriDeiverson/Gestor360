@@ -83,6 +83,7 @@ export interface Category {
   name: string;
   color: string;
   type: "income" | "expense";
+  description?: string;
 }
 
 export interface Goal {

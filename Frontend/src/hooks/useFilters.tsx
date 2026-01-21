@@ -26,7 +26,6 @@ const getInitialFilters = (): Filters => {
     startDate: startDate.toISOString().split("T")[0],
     endDate: endDate.toISOString().split("T")[0],
     accounts: [], // VAZIO = MOSTRA TODAS AS CONTAS
-    industries: [], // VAZIO = MOSTRA TODAS AS CATEGORIAS
     status: "all",
   };
 
