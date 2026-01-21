@@ -1,7 +1,7 @@
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import { supabase, supabaseAdmin } from "./supabase";
-import { emailService } from "./emailService.js";
+import { emailService } from "./emailService";
 
 const JWT_SECRET = process.env.JWT_SECRET || "your-super-secret-jwt-key";
 const JWT_EXPIRES_IN = "7d";

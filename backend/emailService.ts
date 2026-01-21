@@ -4,18 +4,29 @@ import dotenv from "dotenv";
 dotenv.config();
 
 class EmailService {
-  private transporter: nodemailer.Transporter;
+  private transporter!: nodemailer.Transporter;
+  private isConfigured: boolean;
 
   constructor() {
-    this.transporter = nodemailer.createTransport({
-      host: process.env.SMTP_HOST || "smtp.gmail.com",
-      port: parseInt(process.env.SMTP_PORT || "587"),
-      secure: false, // true para 465, false para outras portas
-      auth: {
-        user: process.env.SMTP_USER,
-        pass: process.env.SMTP_PASS,
-      },
-    });
+    // Check if SMTP credentials are available
+    const hasSmtpConfig = process.env.SMTP_USER && process.env.SMTP_PASS;
+    
+    if (hasSmtpConfig) {
+      this.transporter = nodemailer.createTransport({
+        host: process.env.SMTP_HOST || "smtp.gmail.com",
+        port: parseInt(process.env.SMTP_PORT || "587"),
+        secure: false, // true para 465, false para outras portas
+        auth: {
+          user: process.env.SMTP_USER,
+          pass: process.env.SMTP_PASS,
+        },
+      });
+      this.isConfigured = true;
+      console.log("📧 Email service configured with SMTP");
+    } else {
+      this.isConfigured = false;
+      console.log("⚠️ Email service not configured - SMTP credentials missing");
+    }
   }
 
   async sendDashboardInvite(
@@ -25,7 +36,13 @@ class EmailService {
     inviteToken: string,
     message?: string,
   ) {
-    const inviteLink = `${process.env.FRONTEND_URL}/invite/${inviteToken}`;
+    // Check if email service is configured
+    if (!this.isConfigured) {
+      console.log("⚠️ Email service not configured - skipping email send");
+      return { messageId: "mock-email-id", skipped: true };
+    }
+
+    const inviteLink = `${process.env.FRONTEND_URL || "https://financeiroplus.vercel.app"}/invite/${inviteToken}`;
 
     const htmlContent = this.generateInviteTemplate({
       inviteEmail,
@@ -199,6 +216,11 @@ class EmailService {
   }
 
   async testConnection() {
+    if (!this.isConfigured) {
+      console.log("⚠️ Email service not configured - cannot test connection");
+      return false;
+    }
+    
     try {
       await this.transporter.verify();
       console.log("Conexão SMTP configurada corretamente");

@@ -1,43 +1,37 @@
-import { defineConfig } from 'vite'
-import type { UserConfig } from 'vite'
-import react from '@vitejs/plugin-react-swc'
+import { defineConfig, type UserConfig } from "vite";
+import react from "@vitejs/plugin-react-swc";
 
-// https://vite.dev/config/
 export default defineConfig(({ mode }) => {
-  let build: UserConfig['build']
-  let esbuild: UserConfig['esbuild']
-  let define: UserConfig['define']
+  const isDev = mode === "development";
 
-  if (mode === 'development') {
-    build = {
-      minify: false,
-      rollupOptions: {
-        output: {
-          manualChunks: undefined,
-        },
+  const build: UserConfig["build"] = {
+    outDir: "dist",
+    minify: !isDev,
+    rollupOptions: {
+      output: {
+        manualChunks: isDev ? undefined : undefined,
       },
-    }
-
-    esbuild = {}
-
-    define = {
-      'process.env.NODE_ENV': '"development"',
-      '__DEV__': 'true',
-    }
-  }
+    },
+  };
 
   return {
     plugins: [react()],
+
     build,
-    esbuild,
-    define,
+
+    define: {
+      "process.env.NODE_ENV": JSON.stringify(mode),
+      __DEV__: JSON.stringify(isDev),
+    },
+
     resolve: {
       alias: {
-        '@': '/src',
+        "@": "/src",
       },
     },
+
     optimizeDeps: {
-      exclude: ['lucide-react'],
+      exclude: ["lucide-react"],
     },
-  }
-})
+  };
+});

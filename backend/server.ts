@@ -33,13 +33,20 @@ app.use(
     credentials: true,
     methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
     allowedHeaders: ["Content-Type", "Authorization"],
+    preflightContinue: false,
+    optionsSuccessStatus: 204,
   }),
 );
 
 // ✅ PRE-FLIGHT GARANTIDO (OBRIGATÓRIO NA VERCEL)
 app.use((req, res, next) => {
+  res.header("Access-Control-Allow-Origin", allowedOrigins.includes(req.headers.origin || "") ? req.headers.origin : allowedOrigins[0]);
+  res.header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, PATCH, OPTIONS");
+  res.header("Access-Control-Allow-Headers", "Content-Type, Authorization");
+  res.header("Access-Control-Allow-Credentials", "true");
+  
   if (req.method === "OPTIONS") {
-    return res.sendStatus(204);
+    return res.status(204).end();
   }
   next();
 });
@@ -223,4 +230,13 @@ app.use((req, res) => {
 // ====================
 // EXPORT (Vercel)
 // ====================
+// For Vercel serverless functions
 export default app;
+
+// Start server only in development
+if (process.env.NODE_ENV !== "production") {
+  const PORT = process.env.PORT || 3001;
+  app.listen(PORT, () => {
+    console.log(`🚀 Server running on http://localhost:${PORT}`);
+  });
+}
