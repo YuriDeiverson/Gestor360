@@ -35,15 +35,15 @@ app.use((req, res, next) => {
     const origin = req.headers.origin;
     const isAllowedOrigin = allowedOrigins.includes(origin || "");
     
-    // Set CORS headers for all requests
-    res.header("Access-Control-Allow-Origin", isAllowedOrigin ? origin : allowedOrigins[0]);
-    res.header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, PATCH, OPTIONS");
-    res.header("Access-Control-Allow-Headers", "Content-Type, Authorization");
-    res.header("Access-Control-Allow-Credentials", "true");
+    // Set CORS headers for ALL responses - including errors
+    res.setHeader("Access-Control-Allow-Origin", isAllowedOrigin ? (origin || allowedOrigins[0]) : allowedOrigins[0]);
+    res.setHeader("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, PATCH, OPTIONS");
+    res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
+    res.setHeader("Access-Control-Allow-Credentials", "true");
     
     console.log(`CORS headers set for origin: ${res.getHeader("Access-Control-Allow-Origin")}`);
     
-    // Handle preflight requests immediately
+    // Handle preflight requests immediately - BEFORE any other middleware
     if (req.method === "OPTIONS") {
       console.log("Handling OPTIONS request - returning 204");
       return res.status(204).end();
@@ -52,6 +52,9 @@ app.use((req, res, next) => {
     next();
   } catch (error) {
     console.error("Error in CORS middleware:", error);
+    // Even on error, try to send CORS headers
+    res.setHeader("Access-Control-Allow-Origin", req.headers.origin || "https://financeiroplus.vercel.app");
+    res.setHeader("Access-Control-Allow-Credentials", "true");
     return res.status(500).json({ error: "CORS middleware error" });
   }
 });
