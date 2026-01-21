@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect, useCallback } from "react";
-import { useAuth } from "../hooks/useAuth";
+import { useAuth } from "../contexts/AuthContext";
 import { useFilters } from "../hooks/useFilters";
 import { useToast } from "../hooks/useToast";
 import { useConfirmation } from "../hooks/useConfirmation";
@@ -10,40 +10,47 @@ import Navbar from "./Navbar";
 import ConfirmModal from "./ConfirmModal";
 import InstallmentNotification from "./InstallmentNotification";
 import {
-  transactionsApi,
-  metasApi,
-  orcamentosApi,
-  categoriasApi,
+  transactionsApi, budgetsApi, metasApi, API_BASE_URL
 } from "../utils/api";
-import { Transaction, Goal, BudgetCategory, Category } from "../utils/types";
+import { cardsApi } from "../utils/cardsApi";
+import { Budget, Transaction, Goal } from "../utils/types";
+import { Meta, BudgetCategory } from "../utils/api";
 import DashboardContent from "./DashboardContent";
 import TransactionsPage from "./TransactionsPage";
 import GoalsPage from "./GoalsPage";
 import BudgetsPage from "./BudgetsPage";
-import CategoriesPage from "./CategoriesPage";
+import CardsPage from "./CardsPage";
+import BillImportModal from "./BillImportModal";
+
+// Tipo simples para Category
+interface Category {
+  id: string;
+  name: string;
+}
 
 const DashboardPage: React.FC = () => {
   console.log("🚀 DashboardPage: Componente carregado");
 
-  const { user, logout, currentDashboard } = useAuth();
+  const { user, logout, currentDashboard, switchDashboard } = useAuth();
   const { filters, setFilters } = useFilters();
   const { showSuccess, showError } = useToast();
   const { confirmation, showConfirmation, hideConfirmation } =
     useConfirmation();
 
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [activePage, setActivePage] = useState<
-    "dashboard" | "transactions" | "goals" | "budgets" | "categories"
+    "dashboard" | "transactions" | "goals" | "budgets" | "cards"
   >("dashboard");
 
   // Data state
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [goals, setGoals] = useState<Goal[]>([]);
-  const [budgetCategories, setBudgetCategories] = useState<BudgetCategory[]>(
-    [],
-  );
+  const [budgetCategories, setBudgetCategories] = useState<BudgetCategory[]>([]);
+  const [cards, setCards] = useState<any[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isImportModalOpen, setIsImportModalOpen] = useState(false);
 
   // Hook para verificação automática de parcelas
   const { updates, removeUpdate } = useInstallmentChecker({
@@ -129,24 +136,58 @@ const DashboardPage: React.FC = () => {
 
       console.log("🎯 Dashboard ID:", currentDashboard.id);
 
-      const [transactionsData, goalsData, budgetsData, categoriesData] =
-        await Promise.all([
-          transactionsApi.getAll(currentDashboard.id),
-          metasApi.getAll(currentDashboard.id),
-          orcamentosApi.getAll(currentDashboard.id),
-          categoriasApi.getAll(currentDashboard.id),
-        ]);
+   // Carregar cartões
+      let cardsData = [];
+      try {
+        const backendCards = await authenticatedFetch(`/api/cards?dashboard_id=${currentDashboard.id}`);
+        // Mapear dados do backend para o formato do frontend
+        cardsData = backendCards.map((card: any) => ({
+          id: card.id,
+          name: card.name,
+          bank: card.bank,
+          limit: card.card_limit,
+          closingDay: card.closing_day,
+          dueDay: card.due_day,
+          currentBalance: card.current_balance,
+          nextDueDate: card.next_due_date,
+          status: card.status
+        }));
+      } catch (error) {
+        console.error("Erro ao carregar cartões:", error);
+      }
+
+   const [transactionsData, goalsData, budgetsData] =
+  await Promise.all([
+    transactionsApi.getAll(currentDashboard.id),
+    metasApi.getAll(currentDashboard.id),
+    budgetsApi.getAll(currentDashboard.id),
+  ]);
 
       console.log("✅ Dados carregados:");
       console.log("  📈 Transações:", transactionsData.length);
       console.log("  🎯 Metas:", goalsData.length);
       console.log("  💰 Orçamentos:", budgetsData.length);
-      console.log("  🏷️ Categorias:", categoriesData.length);
+      console.log("  💳 Cartões:", cardsData.length);
+      
+      // Debug: verificar primeiras transações
+      console.log("🔍 Debug - Primeiras 3 transações recebidas:", transactionsData.slice(0, 3));
 
+      console.log("🔄 Debug - Atualizando estados:");
+      console.log("  - Transactions:", transactionsData.length, "anterior:", transactions.length);
+      console.log("  - Goals:", goalsData.length);
+      console.log("  - Budgets:", budgetsData.length);
+      console.log("  - Cards:", cardsData.length);
+      
       setTransactions(transactionsData);
       setGoals(goalsData);
       setBudgetCategories(budgetsData);
-      setCategories(categoriesData);
+      setCards(cardsData);
+      
+      // Verificar se atualizou após um pequeno delay
+      setTimeout(() => {
+        console.log("🔍 Debug - Estado após 500ms:");
+        console.log("  - Transactions length:", transactions.length);
+      }, 500);
     } catch (error) {
       console.error("❌ Erro ao carregar dados:", error);
       // Em caso de erro, manter arrays vazios
@@ -242,20 +283,33 @@ const DashboardPage: React.FC = () => {
   // Handlers to modify data
   const addTransaction = async (
     newTransaction: Omit<Transaction, "id" | "industry">,
+    
   ) => {
     console.log("🔄 Tentando adicionar transação:", newTransaction);
     console.log("📌 Dashboard atual:", currentDashboard?.id);
+    console.log("💳 Método da transação:", newTransaction.method);
+    console.log("🆔 Budget ID:", (newTransaction as any).budget_id);
 
+      
     try {
+      // O modal envia budget_id diretamente, não budgetId
+      const budgetId = (newTransaction as any).budget_id || (newTransaction as any).budgetId;
+          // Para salário e transações com account (cartão), budgetId é opcional
+      if (!budgetId && !newTransaction.account && newTransaction.method !== "Salário") {
+        throw new Error("budget_id é obrigatório");
+      }
+
+      if (!currentDashboard?.id) {
+        throw new Error("Nenhum dashboard selecionado");
+      }
+
       const apiTransaction = {
         descricao: newTransaction.description,
         valor: newTransaction.amount,
-        tipo: (newTransaction.type === "income" ? "receita" : "despesa") as
-          | "receita"
-          | "despesa",
-        categoria: newTransaction.category,
+        tipo: newTransaction.type === "income" ? "receita" : "despesa",
+        budget_id: budgetId ?? null,
         data: newTransaction.date,
-        dashboard_id: currentDashboard?.id,
+        dashboard_id: currentDashboard.id,
         // Campos de parcelamento (snake_case para o banco)
         installments: newTransaction.installments,
         currentinstallment: newTransaction.currentInstallment,
@@ -265,7 +319,7 @@ const DashboardPage: React.FC = () => {
         // Outros campos
         method: newTransaction.method,
         account: newTransaction.account,
-        status: newTransaction.status,
+        status: newTransaction.status ?? "completed",
       };
 
       console.log("📤 Enviando para API:", apiTransaction);
@@ -278,7 +332,7 @@ const DashboardPage: React.FC = () => {
 
       showSuccess(
         "Transação criada",
-        `"${newTransaction.description}" foi adicionada com sucesso!`,
+        `"${newTransaction.description}" foi adicionada com sucesso!`
       );
     } catch (error) {
       console.log("❌ Erro ao salvar transação:", error);
@@ -294,26 +348,23 @@ const DashboardPage: React.FC = () => {
       console.log("🔄 Editando transação:", editedTransaction);
 
       const apiTransaction = {
-        descricao: editedTransaction.description,
-        valor: editedTransaction.amount,
-        tipo:
-          editedTransaction.type === "income"
-            ? ("receita" as const)
-            : ("despesa" as const),
-        categoria: editedTransaction.category,
-        data: editedTransaction.date,
-        dashboard_id: currentDashboard?.id,
-        // Campos de parcelamento (snake_case para o banco)
-        installments: editedTransaction.installments,
-        currentinstallment: editedTransaction.currentInstallment,
-        totalamount: editedTransaction.totalAmount,
-        remainingamount: editedTransaction.remainingAmount,
-        nextpaymentdate: editedTransaction.nextPaymentDate,
-        // Outros campos
-        method: editedTransaction.method,
-        account: editedTransaction.account,
-        status: editedTransaction.status,
-      };
+  descricao: editedTransaction.description,
+  valor: editedTransaction.amount,
+  tipo:
+    editedTransaction.type === "income" ? "receita" : "despesa",
+  budget_id: editedTransaction.budgetId,
+  data: editedTransaction.date,
+  dashboard_id: currentDashboard?.id,
+  installments: editedTransaction.installments,
+  currentinstallment: editedTransaction.currentInstallment,
+  totalamount: editedTransaction.totalAmount,
+  remainingamount: editedTransaction.remainingAmount,
+  nextpaymentdate: editedTransaction.nextPaymentDate,
+  method: editedTransaction.method,
+  account: editedTransaction.account,
+  status: editedTransaction.status,
+};
+
 
       await transactionsApi.update(editedTransaction.id, apiTransaction);
       console.log("✅ Transação atualizada no backend!");
@@ -324,14 +375,36 @@ const DashboardPage: React.FC = () => {
 
       showSuccess(
         "Transação editada",
-        `"${editedTransaction.description}" foi atualizada com sucesso!`,
+        `"${editedTransaction.description}" foi atualizada com sucesso!`
       );
     } catch (error) {
       console.error("❌ Erro ao editar transação:", error);
       showError(
         "Erro ao editar transação",
-        "Não foi possível atualizar a transação. Tente novamente.",
+        "Não foi possível atualizar a transação. Tente novamente."
       );
+    }
+  };
+
+  const importTransactions = async (transactions: any[]) => {
+    console.log("📥 Importando transações:", transactions);
+    try {
+      // Adicionar cada transação individualmente
+      for (const transaction of transactions) {
+        await addTransaction(transaction);
+      }
+      
+      // Recarregar dados após importação
+      await loadData();
+      
+      // Debug: verificar transações após recarregar
+      console.log("🔍 Debug - Transações após importação:", transactions.length);
+      console.log("🔍 Debug - Estado atual das transações:", transactions);
+      
+      showSuccess("Importação Concluída", `${transactions.length} transações importadas com sucesso!`);
+    } catch (error) {
+      console.error("❌ Erro ao importar transações:", error);
+      showError("Erro na Importação", "Não foi possível importar as transações. Tente novamente.");
     }
   };
 
@@ -344,7 +417,7 @@ const DashboardPage: React.FC = () => {
 
       console.log("💰 Pagando parcela da transação:", transaction);
 
-      await transactionsApi.payInstallment(transaction.id, currentDashboard.id);
+      await transactionsApi.payInstallment(transaction.id);
       console.log("✅ Parcela paga no backend!");
 
       // RECARREGAR dados após pagar parcela
@@ -355,13 +428,13 @@ const DashboardPage: React.FC = () => {
         "Parcela paga",
         `Parcela ${transaction.currentInstallment! + 1}/${
           transaction.installments
-        } de "${transaction.description}" foi paga com sucesso!`,
+        } de "${transaction.description}" foi paga com sucesso!`
       );
     } catch (error) {
       console.error("❌ Erro ao pagar parcela:", error);
       showError(
         "Erro ao pagar parcela",
-        "Não foi possível processar o pagamento. Tente novamente.",
+        "Não foi possível processar o pagamento. Tente novamente."
       );
     }
   };
@@ -375,6 +448,7 @@ const DashboardPage: React.FC = () => {
       `Valor: R$ ${transaction.amount.toFixed(2)}`,
       `Data: ${new Date(transaction.date).toLocaleDateString("pt-BR")}`,
       `Categoria: ${transaction.category}`,
+      `Tipo: ${transaction.type === "income" ? "Receita" : "Despesa"}`,
     ];
 
     const confirmed = await showConfirmation({
@@ -397,13 +471,13 @@ const DashboardPage: React.FC = () => {
 
         showSuccess(
           "Transação excluída",
-          `"${transaction.description}" foi removida com sucesso!`,
+          `"${transaction.description}" foi removida com sucesso!`
         );
       } catch (error) {
         console.error("❌ Erro ao deletar transação:", error);
         showError(
           "Erro ao excluir transação",
-          "Não foi possível remover a transação. Tente novamente.",
+          "Não foi possível remover a transação. Tente novamente."
         );
       }
     }
@@ -424,13 +498,13 @@ const DashboardPage: React.FC = () => {
       await loadData();
       showSuccess(
         "Meta criada",
-        `"${newGoal.name}" foi adicionada com sucesso!`,
+        `"${newGoal.name}" foi adicionada com sucesso!`
       );
     } catch (error) {
       console.error("❌ Erro ao salvar meta:", error);
       showError(
         "Erro ao criar meta",
-        "Não foi possível criar a meta. Tente novamente.",
+        "Não foi possível criar a meta. Tente novamente."
       );
     }
   };
@@ -443,20 +517,20 @@ const DashboardPage: React.FC = () => {
         valor_alvo: editedGoal.targetAmount,
         valor_atual: editedGoal.currentAmount,
         data_limite: editedGoal.deadline,
-        descricao: editedGoal.category || "",
+        descricao: editedGoal.name || "",
       };
 
       await metasApi.update(editedGoal.id, apiGoal);
       await loadData();
       showSuccess(
         "Meta editada",
-        `"${editedGoal.name}" foi atualizada com sucesso!`,
+        `"${editedGoal.name}" foi atualizada com sucesso!`
       );
     } catch (error) {
       console.error("❌ Erro ao editar meta:", error);
       showError(
         "Erro ao editar meta",
-        "Não foi possível atualizar a meta. Tente novamente.",
+        "Não foi possível atualizar a meta. Tente novamente."
       );
     }
   };
@@ -498,13 +572,13 @@ const DashboardPage: React.FC = () => {
         await loadData();
         showSuccess(
           "Meta excluída",
-          `"${goal.name}" foi removida com sucesso!`,
+          `"${goal.name}" foi removida com sucesso!`
         );
       } catch (error) {
         console.error("❌ Erro ao deletar meta:", error);
         showError(
           "Erro ao excluir meta",
-          "Não foi possível remover a meta. Tente novamente.",
+          "Não foi possível remover a meta. Tente novamente."
         );
       }
     }
@@ -521,42 +595,64 @@ const DashboardPage: React.FC = () => {
   const addBudget = async (newBudget: Omit<BudgetCategory, "id">) => {
     try {
       const currentDate = new Date();
-      const apiOrcamento = {
-        categoria: newBudget.name,
-        valor_limite: newBudget.budgetedAmount,
-        valor_gasto: 0,
-        mes: currentDate.getMonth() + 1,
-        ano: currentDate.getFullYear(),
-        dashboard_id: currentDashboard?.id,
-      };
+      
 
-      await orcamentosApi.create(apiOrcamento);
+      await budgetsApi.create({
+  nome: newBudget.name,
+  limit_value: newBudget.budgetedAmount,
+  cor: newBudget.color,
+  icone: newBudget.icon,
+  tipo: newBudget.type,
+  descricao: newBudget.description || "",
+  dashboard_id: currentDashboard?.id,
+});
       await loadData();
       showSuccess(
         "Orçamento criado",
-        `"${newBudget.name}" foi adicionado com sucesso!`,
+        `"${newBudget.name}" foi adicionado com sucesso!`
       );
     } catch (error) {
       console.error("❌ Erro ao salvar orçamento:", error);
       showError(
         "Erro ao criar orçamento",
-        "Não foi possível criar o orçamento. Tente novamente.",
+        "Não foi possível criar o orçamento. Tente novamente."
       );
     }
   };
 
-  const editBudget = async (updatedBudget: BudgetCategory) => {
+  const editBudget = async (updatedBudget: Budget) => {
     try {
-      const apiOrcamento = {
-        categoria: updatedBudget.name,
-        valor_limite: updatedBudget.budgetedAmount,
-      };
+      // Encontrar o orçamento original para comparar o tipo
+      const originalBudget = budgetCategories.find(b => b.id === updatedBudget.id);
+      const typeChanged = originalBudget?.type !== updatedBudget.type;
 
-      await orcamentosApi.update(updatedBudget.id, apiOrcamento);
+      // Atualizar o orçamento
+      await budgetsApi.update(updatedBudget.id, {
+        nome: updatedBudget.name,
+        limit_value: updatedBudget.budgetedAmount,
+        cor: updatedBudget.color,
+        tipo: updatedBudget.type,
+      });
+
+      // Se o tipo mudou, atualizar TODAS as transações associadas (existentes e futuras)
+      let updatedTransactionsCount = 0;
+      if (typeChanged) {
+        const transactionsToUpdate = transactions.filter(t => t.budgetId === updatedBudget.id);
+        updatedTransactionsCount = transactionsToUpdate.length;
+        
+        for (const transaction of transactionsToUpdate) {
+          await transactionsApi.update(transaction.id, {
+            tipo: updatedBudget.type,
+          });
+        }
+      }
+
       await loadData();
       showSuccess(
         "Orçamento editado",
-        `"${updatedBudget.name}" foi atualizado com sucesso!`,
+        `"${updatedBudget.name}" foi atualizado com sucesso!${
+          typeChanged ? ` ${updatedTransactionsCount} transação(ões) sincronizada(s).` : ''
+        }`,
       );
     } catch (error) {
       console.error("❌ Erro ao editar orçamento:", error);
@@ -571,11 +667,6 @@ const DashboardPage: React.FC = () => {
     const budget = budgetCategories.find((b) => b.id === budgetId);
     if (!budget) return;
 
-    const details = [
-      `Nome: ${budget.name}`,
-      `Valor Orçado: R$ ${budget.budgetedAmount.toFixed(2)}`,
-    ];
-
     const confirmed = await showConfirmation({
       title: "Excluir Orçamento",
       message:
@@ -583,12 +674,11 @@ const DashboardPage: React.FC = () => {
       confirmText: "Excluir",
       cancelText: "Cancelar",
       type: "danger",
-      details,
     });
 
     if (confirmed) {
       try {
-        await orcamentosApi.delete(budgetId);
+        await budgetsApi.delete(budgetId);
         await loadData();
         showSuccess(
           "Orçamento excluído",
@@ -598,198 +688,141 @@ const DashboardPage: React.FC = () => {
         console.error("❌ Erro ao excluir orçamento:", error);
         showError(
           "Erro ao excluir orçamento",
-          "Não foi possível excluir o orçamento. Tente novamente.",
+          "Não foi possível remover o orçamento. Tente novamente.",
         );
       }
     }
   };
 
-  const addCategory = async (newCategory: Omit<Category, "id">) => {
+  // Função auxiliar para fazer chamadas autenticadas
+  const authenticatedFetch = async (url: string, options: RequestInit = {}) => {
+    const token = localStorage.getItem('authToken');
+    if (!token) {
+      throw new Error('Token não encontrado');
+    }
+
+    const response = await fetch(`${API_BASE_URL}${url}`, {
+      ...options,
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+        ...options.headers,
+      },
+    });
+
+    if (response.status === 401) {
+      logout();
+      throw new Error('Sessão expirada');
+    }
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.error || 'Erro na requisição');
+    }
+
+    return response.json();
+  };
+
+  // Funções para gerenciar cartões
+  const editCard = async (updatedCard: any) => {
     try {
-      const apiCategoria = {
-        nome: newCategory.name,
-        icone: newCategory.icon,
-        cor: newCategory.color,
-        tipo: newCategory.type,
-        descricao: newCategory.description || "",
-        dashboard_id: currentDashboard?.id,
+      const backendResponse = await authenticatedFetch(`/api/cards/${updatedCard.id}`, {
+        method: 'PUT',
+        body: JSON.stringify({
+          name: updatedCard.name,
+          bank: updatedCard.bank,
+          card_limit: updatedCard.limit,
+          closing_day: updatedCard.closingDay,
+          due_day: updatedCard.dueDay,
+          status: updatedCard.status
+        })
+      });
+      
+      // Mapear resposta do backend para o formato do frontend
+      const frontendCard = {
+        id: backendResponse.id,
+        name: backendResponse.name,
+        bank: backendResponse.bank,
+        limit: backendResponse.card_limit,
+        closingDay: backendResponse.closing_day,
+        dueDay: backendResponse.due_day,
+        currentBalance: backendResponse.current_balance,
+        nextDueDate: backendResponse.next_due_date,
+        status: backendResponse.status
       };
-
-      await categoriasApi.create(apiCategoria);
-      await loadData();
-
-      showSuccess(
-        "Categoria criada",
-        `"${newCategory.name}" foi adicionada com sucesso!`,
-      );
+      
+      // Atualizar o estado com o cartão atualizado
+      setCards(prev => prev.map(card => 
+        card.id === frontendCard.id ? frontendCard : card
+      ));
+      showSuccess("Cartão atualizado", `${updatedCard.name} foi atualizado com sucesso!`);
     } catch (error) {
-      console.error("❌ Erro ao salvar categoria:", error);
-      showError(
-        "Erro ao criar categoria",
-        "Não foi possível criar a categoria. Tente novamente.",
-      );
+      console.error("Erro ao editar cartão:", error);
+      showError("Erro ao editar cartão", error instanceof Error ? error.message : "Tente novamente");
     }
   };
 
-  const editCategory = async (updatedCategory: Category) => {
-    try {
-      // Encontrar categoria original para comparar se o nome mudou
-      const originalCategory = categories.find(
-        (c) => c.id === updatedCategory.id,
-      );
-      const nameChanged =
-        originalCategory && originalCategory.name !== updatedCategory.name;
-
-      const apiCategoria = {
-        nome: updatedCategory.name,
-        icone: updatedCategory.icon,
-        cor: updatedCategory.color,
-        tipo: updatedCategory.type,
-        descricao: updatedCategory.description || "",
-        dashboard_id: currentDashboard?.id,
-      };
-
-      await categoriasApi.update(updatedCategory.id, apiCategoria);
-
-      // Se o nome da categoria mudou, atualizar todas as transações e orçamentos que usam essa categoria
-      if (nameChanged && originalCategory) {
-        // Atualizar transações
-        const transactionsToUpdate = transactions.filter(
-          (t) => t.category === originalCategory.name,
-        );
-
-        for (const transaction of transactionsToUpdate) {
-          const updatedTransaction = {
-            ...transaction,
-            category: updatedCategory.name,
-          };
-
-          try {
-            const apiTransacao = {
-              descricao: updatedTransaction.description,
-              valor: updatedTransaction.amount,
-              data: updatedTransaction.date,
-              tipo: (updatedTransaction.type === "income"
-                ? "receita"
-                : "despesa") as "receita" | "despesa",
-              categoria: updatedTransaction.category, // Nome atualizado
-              dashboard_id: currentDashboard?.id,
-            };
-
-            await transactionsApi.update(transaction.id, apiTransacao);
-          } catch (error) {
-            console.error(
-              `❌ Erro ao atualizar transação ${transaction.id}:`,
-              error,
-            );
-          }
-        }
-
-        // Atualizar orçamentos
-        const budgetsToUpdate = budgetCategories.filter(
-          (b) => b.name === originalCategory.name,
-        );
-
-        for (const budget of budgetsToUpdate) {
-          const updatedBudget = {
-            ...budget,
-            name: updatedCategory.name,
-          };
-
-          try {
-            const apiOrcamento = {
-              categoria: updatedBudget.name, // Nome atualizado
-              valor_limite: updatedBudget.budgetedAmount,
-              dashboard_id: currentDashboard?.id,
-            };
-
-            await orcamentosApi.update(budget.id, apiOrcamento);
-          } catch (error) {
-            console.error(
-              `❌ Erro ao atualizar orçamento ${budget.id}:`,
-              error,
-            );
-          }
-        }
-
-        if (transactionsToUpdate.length > 0 || budgetsToUpdate.length > 0) {
-          const transactionMsg =
-            transactionsToUpdate.length > 0
-              ? `${transactionsToUpdate.length} transações`
-              : "";
-          const budgetMsg =
-            budgetsToUpdate.length > 0
-              ? `${budgetsToUpdate.length} orçamentos`
-              : "";
-          const separator =
-            transactionsToUpdate.length > 0 && budgetsToUpdate.length > 0
-              ? " e "
-              : "";
-
-          console.log(
-            `✅ Atualizados: ${transactionMsg}${separator}${budgetMsg} com a nova categoria "${updatedCategory.name}"`,
-          );
-        }
-      }
-
-      await loadData();
-
-      showSuccess(
-        "Categoria atualizada",
-        `"${updatedCategory.name}" foi atualizada com sucesso!${
-          nameChanged
-            ? ` Transações e orçamentos atualizados automaticamente.`
-            : ""
-        }`,
-      );
-    } catch (error) {
-      console.error("❌ Erro ao atualizar categoria:", error);
-      showError(
-        "Erro ao atualizar categoria",
-        "Não foi possível atualizar a categoria. Tente novamente.",
-      );
-    }
-  };
-
-  const deleteCategory = async (categoryId: string) => {
-    const category = categories.find((c) => c.id === categoryId);
-    if (!category) return;
-
-    const details = [
-      `Nome: ${category.name}`,
-      `Cor: ${category.color}`,
-      "Atenção: Transações desta categoria podem ser afetadas!",
-    ];
-
+  const deleteCard = async (cardId: string) => {
+    const card = cards.find(c => c.id === cardId);
+    if (!card) return;
+    
     const confirmed = await showConfirmation({
-      title: "Excluir Categoria",
-      message:
-        "Tem certeza que deseja excluir esta categoria? Esta ação não pode ser desfeita.",
+      title: "Excluir Cartão",
+      message: `Tem certeza que deseja excluir o cartão "${card.name}"?`,
       confirmText: "Excluir",
       cancelText: "Cancelar",
-      type: "warning",
-      details,
+      type: "danger",
     });
 
     if (confirmed) {
       try {
-        await categoriasApi.delete(categoryId);
-        await loadData();
+        await authenticatedFetch(`/api/cards/${cardId}`, {
+          method: 'DELETE'
+        });
 
-        showSuccess(
-          "Categoria excluída",
-          `"${category.name}" foi removida com sucesso!`,
-        );
+        // Remover o cartão do estado
+        setCards(prev => prev.filter(c => c.id !== cardId));
+        showSuccess("Cartão excluído", `${card.name} foi removido com sucesso!`);
       } catch (error) {
-        console.error("❌ Erro ao deletar categoria:", error);
-        showError(
-          "Erro ao excluir categoria",
-          "Não foi possível excluir a categoria. Tente novamente.",
-        );
+        console.error("Erro ao excluir cartão:", error);
+        showError("Erro ao excluir cartão", error instanceof Error ? error.message : "Tente novamente");
       }
     }
   };
 
+  const addCard = async (newCard: any) => {
+    try {
+      // Obter os dashboards do usuário e usar o primeiro
+      const dashboards = await authenticatedFetch('/api/auth/dashboards');
+      if (!dashboards || !dashboards.data || dashboards.data.length === 0) {
+        throw new Error('Nenhum dashboard encontrado');
+      }
+
+      const dashboard_id = dashboards.data[0].id;
+
+      // Fazer a chamada para criar o cartão
+      const createdCard = await authenticatedFetch('/api/cards', {
+        method: 'POST',
+        body: JSON.stringify({
+          dashboard_id,
+          name: newCard.name,
+          bank: newCard.bank,
+          card_limit: newCard.limit,
+          closing_day: newCard.closingDay,
+          due_day: newCard.dueDay
+        })
+      });
+      
+      // Atualizar o estado com o cartão criado
+      setCards(prev => [...prev, createdCard]);
+      showSuccess("Cartão adicionado", `${newCard.name} foi adicionado com sucesso!`);
+    } catch (error) {
+      console.error("Erro ao adicionar cartão:", error);
+      showError("Erro ao adicionar cartão", error instanceof Error ? error.message : "Tente novamente");
+    }
+  };
+
+  
   const handleSetActivePage = (page: string) => {
     console.log("📄 Mudando para página:", page);
     setActivePage(page as typeof activePage);
@@ -814,18 +847,17 @@ const DashboardPage: React.FC = () => {
             editTransaction={editTransaction}
             deleteTransaction={deleteTransaction}
             payInstallment={payInstallment}
-            categories={categories}
-          />
-        );
-      case "goals":
-        return (
-          <GoalsPage
-            goals={goals}
-            addGoal={addGoal}
-            editGoal={editGoal}
-            deleteGoal={deleteGoal}
-            addFunds={addFundsToGoal}
-            categories={categories}
+            budgets={budgetCategories.map(b => ({
+              id: b.id,
+              name: b.name,
+              budgetedAmount: b.budgetedAmount,
+              color: b.color,
+              limit_value: b.budgetedAmount,
+              status: b.status,
+              type: b.type
+            }))}
+            cards={cards}
+            onImportTransactions={importTransactions}
           />
         );
       case "budgets":
@@ -839,28 +871,47 @@ const DashboardPage: React.FC = () => {
             categories={categories}
           />
         );
-      case "categories":
+      case "cards":
         return (
-          <CategoriesPage
-            categories={categories}
-            addCategory={addCategory}
-            editCategory={editCategory}
-            deleteCategory={deleteCategory}
+          <CardsPage
+            cards={cards}
+            onAddCard={addCard}
+            onEditCard={editCard}
+            onDeleteCard={deleteCard}
           />
+        );
+      case "goals":
+        return (
+       <GoalsPage
+  goals={goals}
+  addGoal={addGoal}
+  editGoal={editGoal}
+  deleteGoal={deleteGoal}
+  addFunds={addFundsToGoal}
+  budgets={budgetCategories.map(b => ({
+    id: b.id,
+    name: b.name,
+    budgetedAmount: b.budgetedAmount,
+    color: b.color,
+    type: b.type
+  }))}
+  categories={categories}
+/>
+
         );
       default:
         return loading ? (
           <div className="flex items-center justify-center h-full">
             <div className="text-center">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
-              <p className="text-gray-600">Carregando dados...</p>
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+              <p className="mt-4 text-gray-600">Carregando...</p>
             </div>
           </div>
         ) : (
           <DashboardContent
             transactions={filteredTransactions}
-            goals={goals}
             setActivePage={handleSetActivePage}
+            payInstallment={payInstallment}
           />
         );
     }
@@ -871,13 +922,19 @@ const DashboardPage: React.FC = () => {
       <Sidebar
         isOpen={isSidebarOpen}
         setIsOpen={setIsSidebarOpen}
+        isCollapsed={isSidebarCollapsed}
+        setIsCollapsed={setIsSidebarCollapsed}
         logout={logout}
         activePage={activePage}
         setActivePage={handleSetActivePage}
       />
 
       {/* Main Content */}
-      <div className="flex-1 flex flex-col min-w-0">
+      <div
+        className={`flex-1 flex flex-col min-w-0 transition-all duration-300 ${
+          isSidebarOpen ? "ml-64 sm:ml-72" : "ml-0"
+        }`}
+      >
         {/* Navbar com Notificações e Perfil */}
         <Navbar
           user={user}
@@ -886,10 +943,12 @@ const DashboardPage: React.FC = () => {
 
         {/* Conteúdo Principal - Responsivo */}
         <main className="flex-1 overflow-y-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6">
-          {/* Filtros */}
-          <Header categories={categories} />
+          <div className="max-w-7xl mx-auto">
+            {/* Filtros - Apenas na página dashboard */}
+            {activePage === "dashboard" && <Header categories={categories} />}
 
-          <div className="max-w-7xl mx-auto">{renderContent()}</div>
+            {renderContent()}
+          </div>
         </main>
       </div>
 

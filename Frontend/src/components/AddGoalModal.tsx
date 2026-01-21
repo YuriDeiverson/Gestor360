@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Goal, Category } from "../utils/types";
+import { Goal } from "../utils/types";
 import { ICONS } from "../constants";
 import Portal from "./Portal";
 
@@ -7,23 +7,20 @@ interface AddGoalModalProps {
   isOpen: boolean;
   onClose: () => void;
   onAddGoal: (goal: Omit<Goal, "id" | "currentAmount">) => void;
-  categories: Category[];
 }
 
 const AddGoalModal: React.FC<AddGoalModalProps> = ({
   isOpen,
   onClose,
   onAddGoal,
-  categories,
 }) => {
   const [name, setName] = useState("");
   const [targetAmount, setTargetAmount] = useState("");
   const [deadline, setDeadline] = useState("");
-  const [category, setCategory] = useState("");
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name || !targetAmount || !deadline || !category) {
+    if (!name || !targetAmount || !deadline) {
       alert("Por favor, preencha todos os campos.");
       return;
     }
@@ -32,14 +29,13 @@ const AddGoalModal: React.FC<AddGoalModalProps> = ({
       name,
       targetAmount: parseFloat(targetAmount),
       deadline,
-      category,
+      budgetId: "default", // Valor padrão já que não usa orçamento
     });
 
     // Reset form
     setName("");
     setTargetAmount("");
     setDeadline("");
-    setCategory("");
   };
 
   if (!isOpen) return null;
@@ -119,27 +115,6 @@ const AddGoalModal: React.FC<AddGoalModalProps> = ({
                   required
                 />
               </div>
-            </div>
-            <div>
-              <label htmlFor="goal-category" className={labelStyle}>
-                Categoria
-              </label>
-              <select
-                id="goal-category"
-                value={category}
-                onChange={(e) => setCategory(e.target.value)}
-                className={inputStyle}
-                required
-              >
-                <option value="" disabled>
-                  Selecione uma categoria
-                </option>
-                {categories.map((cat) => (
-                  <option key={cat.id} value={cat.name}>
-                    {cat.name}
-                  </option>
-                ))}
-              </select>
             </div>
             <div className="flex flex-col-reverse sm:flex-row justify-end gap-3 pt-4 sm:pt-6 border-t border-gray-200">
               <button

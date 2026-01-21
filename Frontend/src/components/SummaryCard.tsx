@@ -4,6 +4,8 @@ interface SummaryCardProps {
   title: string;
   value: number;
   subtitle?: string;
+  subtitleColor?: string; // ex: "text-blue-600"
+  showBorder?: boolean;
   icon?: React.ReactNode;
   variant?: "positive" | "negative" | "neutral";
 }
@@ -17,6 +19,8 @@ const SummaryCard: React.FC<SummaryCardProps> = ({
   title,
   value,
   subtitle,
+  subtitleColor,
+  showBorder,
   icon,
   variant = "neutral",
 }) => {
@@ -62,7 +66,21 @@ const SummaryCard: React.FC<SummaryCardProps> = ({
             </span>
           </div>
           {subtitle && (
-            <p className="mt-2 text-sm text-gray-500 truncate">{subtitle}</p>
+            <div
+              className={`mt-2 text-sm font-medium ${
+                subtitleColor || "text-gray-500"
+              } ${
+                showBorder
+                  ? `pb-1 border-b-2 ${
+                      subtitleColor
+                        ? subtitleColor.replace("text-", "border-")
+                        : "border-gray-300"
+                    }`
+                  : ""
+              }`}
+            >
+              <p className="truncate">{subtitle}</p>
+            </div>
           )}
         </div>
 

@@ -47,8 +47,12 @@ router.post("/register", async (req, res) => {
     });
   } catch (error) {
     console.error("Erro no registro:", error);
-
+    
+    // Log detalhado do erro para debugging
     if (error instanceof Error) {
+      console.error("Mensagem de erro:", error.message);
+      console.error("Stack trace:", error.stack);
+      
       if (error.message === "Email já está em uso") {
         return res.status(409).json({
           error: error.message,
@@ -60,6 +64,7 @@ router.post("/register", async (req, res) => {
     res.status(500).json({
       error: "Erro interno do servidor",
       code: "INTERNAL_ERROR",
+      details: process.env.NODE_ENV === 'development' ? (error instanceof Error ? error.message : String(error)) : undefined
     });
   }
 });

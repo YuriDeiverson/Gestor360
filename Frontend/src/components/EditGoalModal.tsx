@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Goal, Category } from "../utils/types";
+import { Goal } from "../utils/types";
 import { ICONS } from "../constants";
 import Portal from "./Portal";
 
@@ -8,7 +8,6 @@ interface EditGoalModalProps {
   onClose: () => void;
   onEditGoal: (goal: Goal) => void;
   goal: Goal | null;
-  categories: Category[];
 }
 
 const EditGoalModal: React.FC<EditGoalModalProps> = ({
@@ -16,12 +15,10 @@ const EditGoalModal: React.FC<EditGoalModalProps> = ({
   onClose,
   onEditGoal,
   goal,
-  categories,
 }) => {
   const [name, setName] = useState("");
   const [targetAmount, setTargetAmount] = useState("");
   const [deadline, setDeadline] = useState("");
-  const [category, setCategory] = useState("");
 
   // Carregar dados da meta quando o modal abrir
   useEffect(() => {
@@ -29,14 +26,13 @@ const EditGoalModal: React.FC<EditGoalModalProps> = ({
       setName(goal.name);
       setTargetAmount(goal.targetAmount.toString());
       setDeadline(goal.deadline);
-      setCategory(goal.category);
     }
   }, [isOpen, goal]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!name || !targetAmount || !deadline || !category) {
+    if (!name || !targetAmount || !deadline) {
       alert("Por favor, preencha todos os campos");
       return;
     }
@@ -46,7 +42,6 @@ const EditGoalModal: React.FC<EditGoalModalProps> = ({
       name,
       targetAmount: parseFloat(targetAmount),
       deadline,
-      category,
     };
 
     onEditGoal(editedGoal);
@@ -57,7 +52,6 @@ const EditGoalModal: React.FC<EditGoalModalProps> = ({
     setName("");
     setTargetAmount("");
     setDeadline("");
-    setCategory("");
   };
 
   const handleClose = () => {
@@ -144,26 +138,6 @@ const EditGoalModal: React.FC<EditGoalModalProps> = ({
                 className={inputStyle}
                 required
               />
-            </div>
-
-            <div>
-              <label htmlFor="category" className={labelStyle}>
-                Categoria
-              </label>
-              <select
-                id="category"
-                value={category}
-                onChange={(e) => setCategory(e.target.value)}
-                className={inputStyle}
-                required
-              >
-                <option value="">Selecione uma categoria</option>
-                {categories.map((cat) => (
-                  <option key={cat.id} value={cat.name}>
-                    {cat.name}
-                  </option>
-                ))}
-              </select>
             </div>
 
             <div className="flex justify-end space-x-4 pt-4">

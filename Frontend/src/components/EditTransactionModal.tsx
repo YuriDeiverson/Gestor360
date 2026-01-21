@@ -4,8 +4,8 @@ import {
   TransactionType,
   TransactionStatus,
   PaymentMethod,
-  Category,
 } from "../utils/types";
+import { Budget } from "../utils/types";
 import { availableAccounts } from "../utils/mockData";
 import { ICONS } from "../constants";
 import Portal from "./Portal";
@@ -15,7 +15,7 @@ interface EditTransactionModalProps {
   onClose: () => void;
   onEditTransaction: (transaction: Transaction) => void;
   transaction: Transaction;
-  categories: Category[];
+  budgets: Budget[];
 }
 
 const EditTransactionModal: React.FC<EditTransactionModalProps> = ({
@@ -23,7 +23,7 @@ const EditTransactionModal: React.FC<EditTransactionModalProps> = ({
   onClose,
   onEditTransaction,
   transaction,
-  categories,
+  budgets,
 }) => {
   const [description, setDescription] = useState("");
   const [amount, setAmount] = useState("");
@@ -47,6 +47,16 @@ const EditTransactionModal: React.FC<EditTransactionModalProps> = ({
       setStatus(transaction.status);
     }
   }, [isOpen, transaction]);
+
+  // Atualiza automaticamente o tipo da transação quando a categoria muda
+  useEffect(() => {
+    if (category && budgets.length > 0) {
+      const selectedBudget = budgets.find(b => b.name === category);
+      if (selectedBudget) {
+        setType(selectedBudget.type);
+      }
+    }
+  }, [category, budgets]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -204,9 +214,9 @@ const EditTransactionModal: React.FC<EditTransactionModalProps> = ({
                   required
                 >
                   <option value="">Selecione uma categoria</option>
-                  {categories.map((cat) => (
-                    <option key={cat.id} value={cat.name}>
-                      {cat.name}
+                  {budgets.map((budget) => (
+                    <option key={budget.id} value={budget.name}>
+                      {budget.name}
                     </option>
                   ))}
                 </select>

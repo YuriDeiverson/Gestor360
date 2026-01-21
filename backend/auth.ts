@@ -52,20 +52,30 @@ class AuthService {
     name: string,
   ): Promise<AuthTokens> {
     try {
+      console.log("Iniciando registro para email:", email);
+      
       // Verificar se email já existe (usando cliente admin)
-      const { data: existingUser } = await supabaseAdmin
+      const { data: existingUser, error: checkError } = await supabaseAdmin
         .from("users")
         .select("id")
         .eq("email", email.toLowerCase())
         .single();
 
+      if (checkError && checkError.code !== 'PGRST116') {
+        console.error("Erro ao verificar email existente:", checkError);
+        throw new Error(`Erro ao verificar email: ${checkError.message}`);
+      }
+
       if (existingUser) {
+        console.log("Email já existe no banco de dados");
         throw new Error("Email já está em uso");
       }
 
+      console.log("Hash da senha...");
       // Hash da senha
       const passwordHash = await bcrypt.hash(password, 12);
 
+      console.log("Inserindo usuário no banco de dados...");
       // Criar usuário (usando cliente admin para bypass RLS)
       const { data: user, error } = await supabaseAdmin
         .from("users")
@@ -79,8 +89,12 @@ class AuthService {
         .select("id, email, name, avatar_url, created_at")
         .single();
 
-      if (error) throw error;
+      if (error) {
+        console.error("Erro ao inserir usuário:", error);
+        throw new Error(`Erro ao criar usuário: ${error.message}`);
+      }
 
+      console.log("Usuário criado com sucesso, gerando tokens...");
       // Gerar tokens
       const tokens = this.generateTokens(user);
 
@@ -89,7 +103,7 @@ class AuthService {
         user,
       };
     } catch (error) {
-      console.error("Erro no registro:", error);
+      console.error("Erro no registro (auth.ts):", error);
       throw error;
     }
   }

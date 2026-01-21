@@ -1,23 +1,34 @@
 import React, { useState } from "react";
-import { BudgetCategory, Category } from "../utils/types";
+import { Budget, TransactionType } from "../utils/types";
 import { ICONS } from "../constants";
 import Portal from "./Portal";
 
 interface AddBudgetCategoryModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onAddBudget: (budget: Omit<BudgetCategory, "id">) => void;
-  categories: Category[];
+  onAddBudget: (budget: Omit<Budget, "id">) => void;
 }
+
+const COLOR_OPTIONS = [
+  { name: "Vermelho", value: "#ef4444" },
+  { name: "Laranja", value: "#f97316" },
+  { name: "Amarelo", value: "#eab308" },
+  { name: "Verde", value: "#22c55e" },
+  { name: "Azul", value: "#3b82f6" },
+  { name: "Roxo", value: "#a855f7" },
+  { name: "Rosa", value: "#ec4899" },
+  { name: "Cinza", value: "#6b7280" },
+];
 
 const AddBudgetCategoryModal: React.FC<AddBudgetCategoryModalProps> = ({
   isOpen,
   onClose,
   onAddBudget,
-  categories,
 }) => {
   const [name, setName] = useState("");
   const [budgetedAmount, setBudgetedAmount] = useState("");
+  const [selectedColor, setSelectedColor] = useState(COLOR_OPTIONS[3].value); // Verde por padrão
+  const [type, setType] = useState<TransactionType>("expense"); // Despesa por padrão
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -29,11 +40,15 @@ const AddBudgetCategoryModal: React.FC<AddBudgetCategoryModalProps> = ({
     onAddBudget({
       name,
       budgetedAmount: parseFloat(budgetedAmount),
+      color: selectedColor,
+      limit_value: parseFloat(budgetedAmount),
+      type,
     });
 
     // Reset form
     setName("");
     setBudgetedAmount("");
+    setSelectedColor(COLOR_OPTIONS[3].value);
   };
 
   if (!isOpen) return null;
@@ -67,33 +82,27 @@ const AddBudgetCategoryModal: React.FC<AddBudgetCategoryModalProps> = ({
             {ICONS.close}
           </button>
           <h2 className="text-xl sm:text-2xl font-bold text-gray-800 pr-10 sm:pr-12">
-            Adicionar Categoria de Orçamento
+            Novo Orçamento
           </h2>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
               <label htmlFor="budget-name" className={labelStyle}>
                 Nome da Categoria
               </label>
-              <select
+              <input
                 id="budget-name"
+                type="text"
+                placeholder="Ex: Alimentação, Transporte..."
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 className={inputStyle}
                 required
-              >
-                <option value="" disabled>
-                  Selecione uma categoria
-                </option>
-                {categories.map((cat) => (
-                  <option key={cat.id} value={cat.name}>
-                    {cat.name}
-                  </option>
-                ))}
-              </select>
+              />
             </div>
+
             <div>
               <label htmlFor="budget-amount" className={labelStyle}>
-                Valor Orçado (R$)
+                Valor Planejado (R$)
               </label>
               <input
                 id="budget-amount"
@@ -106,6 +115,43 @@ const AddBudgetCategoryModal: React.FC<AddBudgetCategoryModalProps> = ({
                 required
               />
             </div>
+
+            <div>
+              <label htmlFor="budget-type" className={labelStyle}>
+                Tipo de Categoria
+              </label>
+              <select
+                id="budget-type"
+                value={type}
+                onChange={(e) => setType(e.target.value as TransactionType)}
+                className={inputStyle}
+                required
+              >
+                <option value="expense">Despesa</option>
+                <option value="income">Receita</option>
+              </select>
+            </div>
+
+            <div>
+              <label className={labelStyle}>Cor da Categoria</label>
+              <div className="grid grid-cols-4 gap-2 mt-2">
+                {COLOR_OPTIONS.map((color) => (
+                  <button
+                    key={color.value}
+                    type="button"
+                    onClick={() => setSelectedColor(color.value)}
+                    className={`w-full aspect-square rounded-lg border-2 transition-all ${
+                      selectedColor === color.value
+                        ? "border-gray-900 shadow-md"
+                        : "border-gray-300"
+                    } hover:shadow-md`}
+                    style={{ backgroundColor: color.value }}
+                    title={color.name}
+                  />
+                ))}
+              </div>
+            </div>
+
             <div className="flex flex-col-reverse sm:flex-row justify-end gap-3 pt-4 sm:pt-6 border-t border-gray-200">
               <button
                 type="button"
@@ -118,7 +164,7 @@ const AddBudgetCategoryModal: React.FC<AddBudgetCategoryModalProps> = ({
                 type="submit"
                 className="w-full sm:w-auto px-6 py-3 sm:py-2.5 bg-emerald-600 text-white rounded-lg font-semibold hover:bg-emerald-700 active:bg-emerald-800 transition-colors shadow-md hover:shadow-lg touch-manipulation min-h-[48px] sm:min-h-[42px]"
               >
-                Adicionar Orçamento
+                Criar Orçamento
               </button>
             </div>
           </form>

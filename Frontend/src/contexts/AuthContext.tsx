@@ -507,3 +507,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     </AuthContext.Provider>
   );
 };
+
+// Hook para usar o contexto de autenticação
+export const useAuth = () => {
+  const context = React.useContext(AuthContext);
+  if (context === undefined) {
+    throw new Error("useAuth must be used within an AuthProvider");
+  }
+  return context;
+};

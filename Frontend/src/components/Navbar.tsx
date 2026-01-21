@@ -101,14 +101,14 @@ const Navbar: React.FC<NavbarProps> = ({ user, toggleSidebar }) => {
 
   return (
     <header className="bg-white/90 backdrop-blur-md border-b border-gray-200 shadow sticky top-0 z-50">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div className="px-4 sm:px-6 lg:px-8">
         <div className="flex items-center h-14 sm:h-16 justify-between">
           {/* Logo à esquerda */}
           <div className="flex items-center space-x-2 sm:space-x-4">
-            {/* Botão Menu Mobile */}
+            {/* Botão Menu */}
             <button
               onClick={toggleSidebar}
-              className="text-gray-600 hover:text-gray-900 hover:bg-gray-100 p-2 rounded-lg transition-colors lg:hidden touch-manipulation active:scale-95"
+              className="text-gray-600 hover:text-gray-900 hover:bg-gray-100 p-2 rounded-lg transition-colors touch-manipulation active:scale-95"
               aria-label="Abrir menu"
             >
               <svg

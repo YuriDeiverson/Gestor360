@@ -1,256 +1,214 @@
-import React, { useMemo, useState, useEffect } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { Transaction } from "../utils/types";
-import { formatCurrency, formatDate } from "../utils/helpers";
+import { formatCurrency } from "../utils/helpers";
 
 interface TransactionChartsProps {
   data: Transaction[];
+  chartType: "line" | "area" | "bar";
 }
 
-type TooltipPayload = {
-  dataKey?: string;
-  color?: string;
-  name?: string;
-  value?: number;
-};
+const MONTHS = [
+  "Jan",
+  "Fev",
+  "Mar",
+  "Abr",
+  "Mai",
+  "Jun",
+  "Jul",
+  "Ago",
+  "Set",
+  "Out",
+  "Nov",
+  "Dez",
+];
 
-const CustomTooltipComponent: React.FC<{
-  active?: boolean;
-  payload?: TooltipPayload[];
-  label?: string | number | null;
-}> = ({ active, payload, label }) => {
-  if (active && payload && payload.length) {
-    return (
-      <div
-        role="tooltip"
-        aria-live="polite"
-        className="rounded-lg p-3 bg-white shadow-md text-xs"
-      >
-        <p className="font-semibold mb-1">{label}</p>
-        {payload.map((pld: TooltipPayload, i: number) => (
-          <p
-            key={`${pld.dataKey ?? pld.name}-${i}`}
-            style={{ color: pld.color }}
-            className="text-xs"
-          >
-            {`${pld.name}: ${formatCurrency(pld.value ?? 0)}`}
-          </p>
-        ))}
-      </div>
-    );
-  }
-  return null;
-};
-
-const CustomTooltip = React.memo(CustomTooltipComponent);
-
-const TransactionCharts: React.FC<TransactionChartsProps> = ({ data }) => {
-  const [recharts, setRecharts] = useState<any | null>(null);
+const TransactionCharts: React.FC<TransactionChartsProps> = ({
+  data,
+  chartType,
+}) => {
+  const [recharts, setRecharts] = useState<any>(null);
 
   useEffect(() => {
-    let mounted = true;
-    import("recharts")
-      .then((mod) => {
-        if (mounted) setRecharts(mod);
-      })
-      .catch(() => {
-        // ignore
-      });
-    return () => {
-      mounted = false;
-    };
+    import("recharts").then(setRecharts);
   }, []);
 
-  const barChartData = useMemo(() => {
-    const monthlyData: Record<
-      string,
-      { month: string; income: number; expense: number }
-    > = {};
+  const chartData = useMemo(() => {
+    const monthly: Record<number, { receita: number; despesa: number }> = {};
+
+    // Inicializar todos os meses
+    MONTHS.forEach((_, index) => {
+      monthly[index] = { receita: 0, despesa: 0 };
+    });
 
     data
       .filter((t) => t.status === "completed")
       .forEach((t) => {
-        const month = new Date(t.date).toLocaleString("default", {
-          month: "short",
-          year: "2-digit",
-        });
-        if (!monthlyData[month])
-          monthlyData[month] = { month, income: 0, expense: 0 };
-        if (t.type === "income") monthlyData[month].income += t.amount;
-        else monthlyData[month].expense += t.amount;
+        const month = new Date(t.date).getMonth();
+        const amount = Number(t.amount) || 0;
+
+        if (t.type === "income") {
+          monthly[month].receita += amount;
+        } else {
+          monthly[month].despesa += amount;
+        }
       });
 
-    const sorted = Object.values(monthlyData).sort((a, b) => {
-      const [aMon, aYear] = a.month.split(" ");
-      const [bMon, bYear] = b.month.split(" ");
-      const dateA = new Date(`01 ${aMon} 20${aYear}`);
-      const dateB = new Date(`01 ${bMon} 20${bYear}`);
-      return dateA.getTime() - dateB.getTime();
-    });
-
-    return sorted;
-  }, [data]);
-
-  const lineChartData = useMemo(() => {
-    const dailyMap: Record<
-      string,
-      { date: string; income: number; expense: number }
-    > = {};
-    let runningIncome = 0;
-    let runningExpense = 0;
-
-    const sortedData = [...data]
-      .filter((t) => t.status === "completed")
-      .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
-
-    sortedData.forEach((t) => {
-      const dayKey = new Date(t.date).toISOString().split("T")[0];
-      if (!dailyMap[dayKey])
-        dailyMap[dayKey] = { date: formatDate(t.date), income: 0, expense: 0 };
-      if (t.type === "income") runningIncome += t.amount;
-      else runningExpense += t.amount;
-      dailyMap[dayKey].income = runningIncome;
-      dailyMap[dayKey].expense = runningExpense;
-    });
-
-    return Object.keys(dailyMap)
-      .sort()
-      .map((k) => dailyMap[k]);
+    return MONTHS.map((label, index) => ({
+      month: label,
+      receita: monthly[index]?.receita ?? 0,
+      despesa: monthly[index]?.despesa ?? 0,
+    }));
   }, [data]);
 
   if (!recharts) {
     return (
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
-        <div className="h-[250px] sm:h-[300px] rounded-lg bg-gray-100 animate-pulse" />
-        <div className="h-[250px] sm:h-[300px] rounded-lg bg-gray-100 animate-pulse" />
-      </div>
+      <div className="h-full w-full rounded-xl bg-gray-100 animate-pulse" />
     );
   }
 
   const {
-    BarChart,
-    Bar,
+    ResponsiveContainer,
+    CartesianGrid,
     XAxis,
     YAxis,
-    CartesianGrid,
     Tooltip,
-    Legend,
-    ResponsiveContainer,
     LineChart,
+    AreaChart,
+    BarChart,
     Line,
+    Area,
+    Bar,
+    Legend,
   } = recharts;
 
-  const hasBarChartData = barChartData.length > 0;
-  const hasLineChartData = lineChartData.length > 0;
+  const commonProps = {
+    data: chartData,
+    margin: { top: 24, right: 24, left: 32, bottom: 16 },
+  };
+
+  let ChartComponent: React.ReactElement;
+
+  if (chartType === "area") {
+    ChartComponent = (
+      <AreaChart {...commonProps}>
+        <defs>
+          <linearGradient id="receitaFill" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="5%" stopColor="#10b981" stopOpacity={0.8} />
+            <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
+          </linearGradient>
+          <linearGradient id="despesaFill" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="5%" stopColor="#ef4444" stopOpacity={0.8} />
+            <stop offset="95%" stopColor="#ef4444" stopOpacity={0} />
+          </linearGradient>
+        </defs>
+
+        <CartesianGrid
+          strokeDasharray="3 3"
+          vertical={false}
+          stroke="#e5e7eb"
+        />
+        <XAxis dataKey="month" axisLine={false} tickLine={false} />
+        <YAxis
+          width={80}
+          axisLine={false}
+          tickLine={false}
+          tickFormatter={(v: number) => formatCurrency(v)}
+        />
+        <Tooltip formatter={(v: number) => formatCurrency(v)} />
+        <Legend />
+        <Area
+          type="monotone"
+          dataKey="receita"
+          name="Receita"
+          stroke="#10b981"
+          fill="url(#receitaFill)"
+          strokeWidth={2}
+        />
+        <Area
+          type="monotone"
+          dataKey="despesa"
+          name="Despesa"
+          stroke="#ef4444"
+          fill="url(#despesaFill)"
+          strokeWidth={2}
+        />
+      </AreaChart>
+    );
+  } else if (chartType === "bar") {
+    ChartComponent = (
+      <BarChart {...commonProps}>
+        <CartesianGrid
+          strokeDasharray="3 3"
+          vertical={false}
+          stroke="#e5e7eb"
+        />
+        <XAxis dataKey="month" axisLine={false} tickLine={false} />
+        <YAxis
+          width={80}
+          axisLine={false}
+          tickLine={false}
+          tickFormatter={(v: number) => formatCurrency(v)}
+        />
+        <Tooltip formatter={(v: number) => formatCurrency(v)} />
+        <Legend />
+        <Bar
+          dataKey="receita"
+          name="Receita"
+          fill="#10b981"
+          radius={[8, 8, 0, 0]}
+        />
+        <Bar
+          dataKey="despesa"
+          name="Despesa"
+          fill="#ef4444"
+          radius={[8, 8, 0, 0]}
+        />
+      </BarChart>
+    );
+  } else {
+    ChartComponent = (
+      <LineChart {...commonProps}>
+        <CartesianGrid
+          strokeDasharray="3 3"
+          vertical={false}
+          stroke="#e5e7eb"
+        />
+        <XAxis dataKey="month" axisLine={false} tickLine={false} />
+        <YAxis
+          width={80}
+          axisLine={false}
+          tickLine={false}
+          tickFormatter={(v: number) => formatCurrency(v)}
+        />
+        <Tooltip formatter={(v: number) => formatCurrency(v)} />
+        <Legend />
+        <Line
+          type="monotone"
+          dataKey="receita"
+          name="Receita"
+          stroke="#10b981"
+          strokeWidth={3}
+          dot={{ fill: "#10b981", r: 4 }}
+          activeDot={{ r: 6 }}
+        />
+        <Line
+          type="monotone"
+          dataKey="despesa"
+          name="Despesa"
+          stroke="#ef4444"
+          strokeWidth={3}
+          dot={{ fill: "#ef4444", r: 4 }}
+          activeDot={{ r: 6 }}
+        />
+      </LineChart>
+    );
+  }
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
-      <div className="rounded-lg">
-        <h3 className="text-base sm:text-lg font-medium mb-3 sm:mb-4">
-          Receitas vs Despesas Mensais
-        </h3>
-        {hasBarChartData ? (
-          <ResponsiveContainer width="100%" height={250}>
-            <BarChart
-              data={barChartData}
-              margin={{ top: 5, right: 10, left: 5, bottom: 5 }}
-            >
-              <CartesianGrid
-                strokeDasharray="3 3"
-                vertical={false}
-                stroke="#e6edf2"
-              />
-              <XAxis
-                dataKey="month"
-                tick={{ fill: "#6b7280", fontSize: 11 }}
-                axisLine={false}
-                tickLine={false}
-              />
-              <YAxis
-                tickFormatter={(v) => formatCurrency(v as number)}
-                tick={{ fill: "#6b7280", fontSize: 11 }}
-                axisLine={false}
-                tickLine={false}
-                width={60}
-              />
-              <Tooltip content={<CustomTooltip />} />
-              <Legend wrapperStyle={{ fontSize: 11 }} />
-              <Bar
-                dataKey="income"
-                name="Receitas"
-                fill="#059669"
-                radius={[6, 6, 0, 0]}
-              />
-              <Bar
-                dataKey="expense"
-                name="Despesas"
-                fill="#ef4444"
-                radius={[6, 6, 0, 0]}
-              />
-            </BarChart>
-          </ResponsiveContainer>
-        ) : (
-          <div className="h-[250px] flex items-center justify-center text-gray-400 text-sm">
-            Sem dados suficientes
-          </div>
-        )}
-      </div>
-
-      <div className="rounded-lg">
-        <h3 className="text-base sm:text-lg font-medium mb-3 sm:mb-4">
-          Fluxo de Caixa Acumulado
-        </h3>
-        {hasLineChartData ? (
-          <ResponsiveContainer width="100%" height={250}>
-            <LineChart
-              data={lineChartData}
-              margin={{ top: 5, right: 10, left: 5, bottom: 5 }}
-            >
-              <CartesianGrid
-                strokeDasharray="3 3"
-                vertical={false}
-                stroke="#e6edf2"
-              />
-              <XAxis
-                dataKey="date"
-                tick={{ fill: "#6b7280", fontSize: 11 }}
-                axisLine={false}
-                tickLine={false}
-              />
-              <YAxis
-                tickFormatter={(v) => formatCurrency(v as number)}
-                tick={{ fill: "#6b7280", fontSize: 11 }}
-                axisLine={false}
-                tickLine={false}
-                width={60}
-              />
-              <Tooltip content={<CustomTooltip />} />
-              <Legend wrapperStyle={{ fontSize: 11 }} />
-              <Line
-                type="monotone"
-                dataKey="income"
-                name="Receita Acumulada"
-                stroke="#059669"
-                strokeWidth={2.5}
-                dot={false}
-                activeDot={{ r: 5 }}
-              />
-              <Line
-                type="monotone"
-                dataKey="expense"
-                name="Despesa Acumulada"
-                stroke="#ef4444"
-                strokeWidth={2.5}
-                dot={false}
-                activeDot={{ r: 5 }}
-              />
-            </LineChart>
-          </ResponsiveContainer>
-        ) : (
-          <div className="h-[250px] flex items-center justify-center text-gray-400 text-sm">
-            Sem dados suficientes
-          </div>
-        )}
-      </div>
+    <div className="w-full h-full">
+      <ResponsiveContainer width="100%" height="100%">
+        {ChartComponent}
+      </ResponsiveContainer>
     </div>
   );
 };

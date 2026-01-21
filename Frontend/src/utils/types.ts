@@ -4,9 +4,9 @@ export interface User {
   email: string;
 }
 
-export type TransactionType = "income" | "expense" | "budget";
+export type TransactionType = "income" | "expense";
 export type TransactionStatus = "completed" | "pending";
-export type PaymentMethod = "Cartão de Crédito" | "Débito" | "PIX";
+export type PaymentMethod = "Cartão de Crédito" | "Débito" | "PIX" | "Salário";
 
 export interface Transaction {
   id: string;
@@ -16,23 +16,58 @@ export interface Transaction {
   type: TransactionType;
   status: TransactionStatus;
   account: string;
-  industry: string; // Could be deprecated or reused
   method: PaymentMethod;
+
+  /**
+   * Categoria = nome do orçamento
+   * Ex: "Aluguel", "Mercado", "Lazer"
+   */
   category: string;
-  // Propriedades para parcelamento
-  installments?: number; // Número total de parcelas
-  currentInstallment?: number; // Parcela atual (1, 2, 3, etc.)
-  totalAmount?: number; // Valor total da compra (antes do parcelamento)
-  nextPaymentDate?: string; // Data do próximo pagamento
-  remainingAmount?: number; // Valor total restante a pagar
+
+  /**
+   * ID do orçamento (budget) associado a esta transação
+   */
+  budgetId?: string;
+
+  /**
+   * Nome do cartão (para transações de cartão)
+   */
+  cardName?: string;
+
+  /**
+   * Campos opcionais para parcelamento
+   */
+  installments?: number;
+  currentInstallment?: number;
+  totalAmount?: number;
+  nextPaymentDate?: string;
+  remainingAmount?: number;
 }
 
 export interface Filters {
   startDate: string;
   endDate: string;
   accounts: string[];
-  industries: string[];
   status: TransactionStatus | "all";
+}
+
+/**
+ * Orçamento é a própria categoria
+ */
+export interface Budget {
+  id: string;
+  name: string;
+  budgetedAmount: number;
+  color?: string;
+  limit_value: number;
+  /**
+   * Define se esta categoria é de receita ou despesa
+   */
+  type: TransactionType;
+  /**
+   * Status é DERIVADO, não salvo
+   */
+  status?: "within" | "near" | "over";
 }
 
 export interface Goal {
@@ -41,20 +76,29 @@ export interface Goal {
   targetAmount: number;
   currentAmount: number;
   deadline: string;
-  category: string;
+
+  /**
+   * Goal também referencia um orçamento
+   */
+  budgetId: string;
 }
 
-export interface BudgetCategory {
+export interface Card {
   id: string;
   name: string;
-  budgetedAmount: number;
+  bank?: string;
+  limit: number;
+  closingDay: number;
+  dueDay: number;
+  currentBalance: number;
+  nextDueDate?: string;
+  status: "active" | "inactive" | "overdue";
 }
 
-export interface Category {
-  id: string;
-  name: string;
-  type: "income" | "expense" | "budget" | "both";
-  description?: string;
-  icon?: string;
-  color?: string;
+export interface BillImportModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  cards: Card[];
+  onImportTransactions: (transactions: any[]) => Promise<void>;
 }
+

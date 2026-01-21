@@ -19,6 +19,11 @@ const AddFundsModal: React.FC<AddFundsModalProps> = ({
 }) => {
   const [amount, setAmount] = useState("");
 
+  // Calcular datas
+  const startDate = new Date();
+  startDate.setDate(startDate.getDate() - 30);
+  const endDate = new Date(goal.deadline);
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const parsedAmount = parseFloat(amount);
@@ -73,6 +78,9 @@ const AddFundsModal: React.FC<AddFundsModalProps> = ({
               <span className="font-bold text-emerald-600">
                 {formatCurrency(goal.targetAmount)}
               </span>
+            </p>
+            <p className="text-sm text-gray-500">
+              Início: {startDate.toLocaleDateString('pt-BR')} • Término: {endDate.toLocaleDateString('pt-BR')}
             </p>
           </div>
           <form onSubmit={handleSubmit} className="space-y-4">
