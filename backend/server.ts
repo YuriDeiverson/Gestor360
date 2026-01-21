@@ -1,6 +1,7 @@
 import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";
+
 import { supabaseAdmin } from "./supabase.js";
 import authRoutes from "./routes/auth.js";
 import { authMiddleware, AuthenticatedRequest } from "./middleware.js";
@@ -18,55 +19,44 @@ dotenv.config({ path: ".env.local", override: false });
 const app = express();
 
 // ====================
-// CORS
+// CORS (VERSÃO ESTÁVEL PRA VERCEL)
 // ====================
 const allowedOrigins = [
   "http://localhost:5173",
   "http://127.0.0.1:5173",
   "https://financeiroplus.vercel.app",
-  process.env.FRONTEND_URL,
-].filter(Boolean) as string[];
+];
 
 app.use(
   cors({
-    origin(origin, callback) {
-      // Permite chamadas server-to-server ou tools (Postman)
-      if (!origin) return callback(null, true);
-
-      // Permite origens explícitas e qualquer app da Vercel
-      if (
-        allowedOrigins.includes(origin) ||
-        origin.endsWith(".vercel.app")
-      ) {
-        return callback(null, true);
-      }
-
-      return callback(new Error("Not allowed by CORS"));
-    },
+    origin: allowedOrigins,
     credentials: true,
     methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
     allowedHeaders: ["Content-Type", "Authorization"],
-  })
+  }),
 );
 
-// Preflight (OBRIGATÓRIO no Vercel)
-app.options("*", cors());
+// ✅ PRE-FLIGHT GARANTIDO (OBRIGATÓRIO NA VERCEL)
+app.use((req, res, next) => {
+  if (req.method === "OPTIONS") {
+    return res.sendStatus(204);
+  }
+  next();
+});
 
 // ====================
-// Middlewares
+// MIDDLEWARES
 // ====================
 app.use(express.json());
 
 // Log simples (debug)
 app.use((req, _res, next) => {
-  console.log(
-    `[${new Date().toISOString()}] ${req.method} ${req.originalUrl}`
-  );
+  console.log(`[${new Date().toISOString()}] ${req.method} ${req.originalUrl}`);
   next();
 });
 
 // ====================
-// Health
+// HEALTH
 // ====================
 app.get("/", (_req, res) => {
   res.json({
@@ -84,13 +74,13 @@ app.get("/health", (_req, res) => {
 });
 
 // ====================
-// Auth
+// AUTH
 // ====================
 app.use("/api/auth", authRoutes);
 app.use("/auth", authRoutes);
 
 // ====================
-// Convites
+// CONVITES
 // ====================
 app.get("/api/invite/:token", async (req, res) => {
   try {
@@ -116,7 +106,7 @@ app.get("/api/invite/:token", async (req, res) => {
           name,
           email
         )
-      `
+      `,
       )
       .eq("invite_token", token)
       .eq("status", "pending")
@@ -171,7 +161,7 @@ app.post("/api/invite/:token/accept", async (req, res) => {
       const result = await authService.register(
         invitation.email,
         password,
-        name
+        name,
       );
       user = result.user;
     }
@@ -191,7 +181,7 @@ app.post("/api/invite/:token/accept", async (req, res) => {
 });
 
 // ====================
-// Rotas de Domínio
+// ROTAS DE DOMÍNIO
 // ====================
 app.use("/api/budgets", budgetsRoutes);
 app.use("/api/transacoes", transacoesRoutes);
@@ -199,7 +189,7 @@ app.use("/api/metas", metasRoutes);
 app.use("/api/cards", cardsRoutes);
 
 // ====================
-// Notificações
+// NOTIFICAÇÕES
 // ====================
 app.get(
   "/api/notifications",
@@ -216,7 +206,7 @@ app.get(
     }
 
     res.json(data);
-  }
+  },
 );
 
 // ====================
