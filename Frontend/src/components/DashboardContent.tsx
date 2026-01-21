@@ -116,7 +116,7 @@ const DashboardContent: React.FC<DashboardContentProps> = ({
           title="Cartões"
           value={0}
           subtitle="Em breve"
-          icon={ICONS.cards}
+          icon={ICONS.creditCard}
           variant="neutral"
         />
       </div>

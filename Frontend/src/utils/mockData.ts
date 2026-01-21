@@ -64,8 +64,7 @@ const generateRandomTransaction = (id: number): Transaction => {
     type,
     status,
     account: getRandomElement(ACCOUNTS),
-    industry: getRandomElement(INDUSTRIES),
-    method: getRandomElement(METHODS),
+        method: getRandomElement(METHODS),
     category:
       type === "income"
         ? "Salário"
@@ -100,8 +99,7 @@ export const mockTransactions: Transaction[] = [
     type: "expense",
     status: "completed",
     account: "Cartão de Crédito",
-    industry: "Varejo",
-    method: "Cartão de Crédito",
+        method: "Cartão de Crédito",
     category: "Moradia",
     installments: 10,
     currentInstallment: 2,

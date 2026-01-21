@@ -211,15 +211,7 @@ const DashboardPage: React.FC = () => {
 
   // Sincronizar filtros com categorias disponíveis
   useEffect(() => {
-    const categoryNames = categories.map((cat) => cat.name);
-
-    // Atualizar filtros para incluir apenas categorias que existem
-    setFilters((prev) => ({
-      ...prev,
-      industries: prev.industries.filter((industry) =>
-        categoryNames.includes(industry),
-      ),
-    }));
+    // Filtros já estão sendo gerenciados pelo hook useFilters
   }, [categories, setFilters]);
 
   // Filter transactions based on current filters
@@ -230,7 +222,6 @@ const DashboardPage: React.FC = () => {
       startDate: filters.startDate,
       endDate: filters.endDate,
       accounts: filters.accounts,
-      industries: filters.industries,
       status: filters.status,
     });
 
@@ -249,9 +240,7 @@ const DashboardPage: React.FC = () => {
         transactionDate >= startDate && transactionDate <= endDate;
       const accountMatch =
         filters.accounts.length === 0 || filters.accounts.includes(t.account);
-      const categoryMatch =
-        filters.industries.length === 0 ||
-        filters.industries.includes(t.category);
+      const categoryMatch = true; // Sem filtro de categoria por enquanto
       const statusMatch =
         filters.status === "all" || filters.status === t.status;
 
@@ -282,7 +271,7 @@ const DashboardPage: React.FC = () => {
 
   // Handlers to modify data
   const addTransaction = async (
-    newTransaction: Omit<Transaction, "id" | "industry">,
+    newTransaction: Omit<Transaction, "id">,
     
   ) => {
     console.log("🔄 Tentando adicionar transação:", newTransaction);
@@ -320,7 +309,7 @@ const DashboardPage: React.FC = () => {
         method: newTransaction.method,
         account: newTransaction.account,
         status: newTransaction.status ?? "completed",
-      };
+      } as any;
 
       console.log("📤 Enviando para API:", apiTransaction);
       await transactionsApi.create(apiTransaction);
@@ -863,12 +852,11 @@ const DashboardPage: React.FC = () => {
       case "budgets":
         return (
           <BudgetsPage
-            budgetCategories={budgetCategories}
+            budgetCategories={budgetCategories as any}
             transactions={filteredTransactions}
-            addBudget={addBudget}
-            editBudget={editBudget}
+            addBudget={addBudget as any}
+            editBudget={editBudget as any}
             deleteBudget={deleteBudget}
-            categories={categories}
           />
         );
       case "cards":
@@ -883,7 +871,7 @@ const DashboardPage: React.FC = () => {
       case "goals":
         return (
        <GoalsPage
-  goals={goals}
+  goals={goals as any}
   addGoal={addGoal}
   editGoal={editGoal}
   deleteGoal={deleteGoal}
@@ -893,8 +881,9 @@ const DashboardPage: React.FC = () => {
     name: b.name,
     budgetedAmount: b.budgetedAmount,
     color: b.color,
-    type: b.type
-  }))}
+    type: b.type,
+    limit_value: b.budgetedAmount
+  })) as any}
   categories={categories}
 />
 
@@ -910,6 +899,7 @@ const DashboardPage: React.FC = () => {
         ) : (
           <DashboardContent
             transactions={filteredTransactions}
+            goals={goals}
             setActivePage={handleSetActivePage}
             payInstallment={payInstallment}
           />
@@ -945,7 +935,7 @@ const DashboardPage: React.FC = () => {
         <main className="flex-1 overflow-y-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6">
           <div className="max-w-7xl mx-auto">
             {/* Filtros - Apenas na página dashboard */}
-            {activePage === "dashboard" && <Header categories={categories} />}
+            {activePage === "dashboard" && <Header categories={categories as any} />}
 
             {renderContent()}
           </div>

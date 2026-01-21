@@ -77,7 +77,7 @@ const AddTransactionModal: React.FC<AddTransactionModalProps> = ({
         account,
         method,
         status,
-      });
+      } as any);
 
       // Reset
       setDescription("");

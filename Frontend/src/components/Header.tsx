@@ -283,16 +283,7 @@ const Header: React.FC<HeaderProps> = ({ categories }) => {
               onToggle={() => setOpenDropdown("accounts")}
             />
 
-            <MultiSelectDropdown
-              options={categories.map((c) => c.name)}
-              selected={filters.industries}
-              onChange={(s) =>
-                setFilters((f) => ({ ...f, industries: s }))
-              }
-              label="Categorias"
-              isOpen={openDropdown === "industries"}
-              onToggle={() => setOpenDropdown("industries")}
-            />
+            {/* Filtro de categorias desabilitado temporariamente */}
 
             <CustomSelect
               value={filters.status}

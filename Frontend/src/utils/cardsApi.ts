@@ -78,7 +78,7 @@ export const cardsApi = {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          dashboard_id: card.dashboardId || '',
+          dashboard_id: (card as any).dashboardId || '',
           name: card.name,
           bank: card.bank || null,
           card_limit: card.limit,

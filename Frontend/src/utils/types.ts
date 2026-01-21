@@ -70,6 +70,21 @@ export interface Budget {
   status?: "within" | "near" | "over";
 }
 
+export interface BudgetCategory {
+  id: string;
+  name: string;
+  budgetedAmount: number;
+  color: string;
+  type: "income" | "expense";
+}
+
+export interface Category {
+  id: string;
+  name: string;
+  color: string;
+  type: "income" | "expense";
+}
+
 export interface Goal {
   id: string;
   name: string;
