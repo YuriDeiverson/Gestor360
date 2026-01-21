@@ -4,12 +4,20 @@ import { authMiddleware, AuthenticatedRequest } from "../middleware.js";
 
 const router = express.Router();
 
-// Registrar novo usuário
+// =====================================================
+// PRE-FLIGHT OPTIONS (OBRIGATÓRIO NA VERCEL)
+// =====================================================
+router.options("*", (_req, res) => {
+  res.sendStatus(204);
+});
+
+// =====================================================
+// REGISTRO
+// =====================================================
 router.post("/register", async (req, res) => {
   try {
     const { email, password, name } = req.body;
 
-    // Validação
     if (!email || !password || !name) {
       return res.status(400).json({
         error: "Email, senha e nome são obrigatórios",
@@ -47,34 +55,28 @@ router.post("/register", async (req, res) => {
     });
   } catch (error) {
     console.error("Erro no registro:", error);
-    
-    // Log detalhado do erro para debugging
-    if (error instanceof Error) {
-      console.error("Mensagem de erro:", error.message);
-      console.error("Stack trace:", error.stack);
-      
-      if (error.message === "Email já está em uso") {
-        return res.status(409).json({
-          error: error.message,
-          code: "EMAIL_EXISTS",
-        });
-      }
+
+    if (error instanceof Error && error.message === "Email já está em uso") {
+      return res.status(409).json({
+        error: error.message,
+        code: "EMAIL_EXISTS",
+      });
     }
 
     res.status(500).json({
       error: "Erro interno do servidor",
       code: "INTERNAL_ERROR",
-      details: process.env.NODE_ENV === 'development' ? (error instanceof Error ? error.message : String(error)) : undefined
     });
   }
 });
 
-// Login
+// =====================================================
+// LOGIN
+// =====================================================
 router.post("/login", async (req, res) => {
   try {
     const { email, password } = req.body;
 
-    // Validação
     if (!email || !password) {
       return res.status(400).json({
         error: "Email e senha são obrigatórios",
@@ -91,13 +93,14 @@ router.post("/login", async (req, res) => {
   } catch (error) {
     console.error("Erro no login:", error);
 
-    if (error instanceof Error) {
-      if (error.message === "Email ou senha incorretos") {
-        return res.status(401).json({
-          error: error.message,
-          code: "INVALID_CREDENTIALS",
-        });
-      }
+    if (
+      error instanceof Error &&
+      error.message === "Email ou senha incorretos"
+    ) {
+      return res.status(401).json({
+        error: error.message,
+        code: "INVALID_CREDENTIALS",
+      });
     }
 
     res.status(500).json({
@@ -107,7 +110,9 @@ router.post("/login", async (req, res) => {
   }
 });
 
-// Verificar token / Buscar dados do usuário atual
+// =====================================================
+// ME (USUÁRIO LOGADO)
+// =====================================================
 router.get("/me", authMiddleware, async (req: AuthenticatedRequest, res) => {
   try {
     const { data: user, error } = await (
@@ -138,7 +143,9 @@ router.get("/me", authMiddleware, async (req: AuthenticatedRequest, res) => {
   }
 });
 
-// Buscar dashboards do usuário
+// =====================================================
+// DASHBOARDS DO USUÁRIO
+// =====================================================
 router.get(
   "/dashboards",
   authMiddleware,
@@ -160,7 +167,9 @@ router.get(
   },
 );
 
-// Criar novo dashboard
+// =====================================================
+// CRIAR DASHBOARD
+// =====================================================
 router.post(
   "/dashboards",
   authMiddleware,
@@ -195,7 +204,9 @@ router.post(
   },
 );
 
-// Enviar convite para dashboard
+// =====================================================
+// ENVIAR CONVITE
+// =====================================================
 router.post(
   "/dashboards/:dashboardId/invitations",
   authMiddleware,
@@ -203,13 +214,6 @@ router.post(
     try {
       const { dashboardId } = req.params;
       const { email, message } = req.body;
-
-      console.log("Dados do convite:", {
-        userId: req.user!.userId,
-        dashboardId,
-        email,
-        message,
-      });
 
       if (!email) {
         return res.status(400).json({
@@ -241,16 +245,10 @@ router.post(
       console.error("Erro ao enviar convite:", error);
 
       if (error instanceof Error) {
-        if (
-          error.message.includes("permissão") ||
-          error.message.includes("encontrado") ||
-          error.message.includes("já faz parte")
-        ) {
-          return res.status(400).json({
-            error: error.message,
-            code: "INVITATION_ERROR",
-          });
-        }
+        return res.status(400).json({
+          error: error.message,
+          code: "INVITATION_ERROR",
+        });
       }
 
       res.status(500).json({
@@ -261,7 +259,9 @@ router.post(
   },
 );
 
-// Buscar convites recebidos
+// =====================================================
+// LISTAR CONVITES
+// =====================================================
 router.get(
   "/invitations",
   authMiddleware,
@@ -285,7 +285,9 @@ router.get(
   },
 );
 
-// Responder a convite (aceitar/rejeitar)
+// =====================================================
+// RESPONDER CONVITE
+// =====================================================
 router.patch(
   "/invitations/:invitationId",
   authMiddleware,
@@ -312,15 +314,7 @@ router.patch(
         data: result,
       });
     } catch (error) {
-      console.error("❌ Erro ao responder convite:", error);
-      console.error(
-        "❌ Stack trace:",
-        error instanceof Error ? error.stack : "N/A",
-      );
-      console.error("❌ Detalhes do erro:", {
-        message: error instanceof Error ? error.message : String(error),
-        name: error instanceof Error ? error.name : "Unknown",
-      });
+      console.error("Erro ao responder convite:", error);
       res.status(500).json({
         error: "Erro interno do servidor",
         code: "INTERNAL_ERROR",
@@ -329,7 +323,9 @@ router.patch(
   },
 );
 
-// Sair de dashboard compartilhado
+// =====================================================
+// SAIR DO DASHBOARD
+// =====================================================
 router.delete(
   "/dashboards/:dashboardId/leave",
   authMiddleware,
@@ -350,15 +346,10 @@ router.delete(
       console.error("Erro ao sair do dashboard:", error);
 
       if (error instanceof Error) {
-        if (
-          error.message.includes("não faz parte") ||
-          error.message.includes("proprietário")
-        ) {
-          return res.status(400).json({
-            error: error.message,
-            code: "LEAVE_ERROR",
-          });
-        }
+        return res.status(400).json({
+          error: error.message,
+          code: "LEAVE_ERROR",
+        });
       }
 
       res.status(500).json({
