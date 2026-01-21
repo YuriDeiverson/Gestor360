@@ -1,23 +1,12 @@
 import express from "express";
-import { authService } from "../auth";
+import { authService } from "../authService";
 import { authMiddleware, AuthenticatedRequest } from "../middleware";
 
 const router = express.Router();
 
-// =====================================================
-// PRE-FLIGHT OPTIONS (OBRIGATÓRIO NA VERCEL)
-// =====================================================
-router.options("*", (req, res) => {
-  res.header("Access-Control-Allow-Origin", req.headers.origin || "https://financeiroplus.vercel.app");
-  res.header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, PATCH, OPTIONS");
-  res.header("Access-Control-Allow-Headers", "Content-Type, Authorization");
-  res.header("Access-Control-Allow-Credentials", "true");
-  res.status(204).end();
-});
-
-// =====================================================
-// REGISTRO
-// =====================================================
+/* =====================================================
+   REGISTRO
+===================================================== */
 router.post("/register", async (req, res) => {
   try {
     const { email, password, name } = req.body;
@@ -74,9 +63,9 @@ router.post("/register", async (req, res) => {
   }
 });
 
-// =====================================================
-// LOGIN
-// =====================================================
+/* =====================================================
+   LOGIN
+===================================================== */
 router.post("/login", async (req, res) => {
   try {
     const { email, password } = req.body;
@@ -114,14 +103,14 @@ router.post("/login", async (req, res) => {
   }
 });
 
-// =====================================================
-// ME (USUÁRIO LOGADO)
-// =====================================================
+/* =====================================================
+   ME (USUÁRIO LOGADO)
+===================================================== */
 router.get("/me", authMiddleware, async (req: AuthenticatedRequest, res) => {
   try {
-    const { data: user, error } = await (
-      await import("../supabase")
-    ).supabaseAdmin
+    const { supabaseAdmin } = await import("../supabase");
+
+    const { data: user, error } = await supabaseAdmin
       .from("users")
       .select("id, email, name, avatar_url, created_at")
       .eq("id", req.user!.userId)
@@ -147,9 +136,9 @@ router.get("/me", authMiddleware, async (req: AuthenticatedRequest, res) => {
   }
 });
 
-// =====================================================
-// DASHBOARDS DO USUÁRIO
-// =====================================================
+/* =====================================================
+   DASHBOARDS DO USUÁRIO
+===================================================== */
 router.get(
   "/dashboards",
   authMiddleware,
@@ -168,12 +157,12 @@ router.get(
         code: "INTERNAL_ERROR",
       });
     }
-  },
+  }
 );
 
-// =====================================================
-// CRIAR DASHBOARD
-// =====================================================
+/* =====================================================
+   CRIAR DASHBOARD
+===================================================== */
 router.post(
   "/dashboards",
   authMiddleware,
@@ -191,7 +180,7 @@ router.post(
       const dashboard = await authService.createDashboard(
         req.user!.userId,
         name,
-        description,
+        description
       );
 
       res.status(201).json({
@@ -205,12 +194,12 @@ router.post(
         code: "INTERNAL_ERROR",
       });
     }
-  },
+  }
 );
 
-// =====================================================
-// ENVIAR CONVITE
-// =====================================================
+/* =====================================================
+   ENVIAR CONVITE
+===================================================== */
 router.post(
   "/dashboards/:dashboardId/invitations",
   authMiddleware,
@@ -238,7 +227,7 @@ router.post(
         req.user!.userId,
         dashboardId,
         email,
-        message,
+        message
       );
 
       res.status(201).json({
@@ -260,19 +249,19 @@ router.post(
         code: "INTERNAL_ERROR",
       });
     }
-  },
+  }
 );
 
-// =====================================================
-// LISTAR CONVITES
-// =====================================================
+/* =====================================================
+   LISTAR CONVITES
+===================================================== */
 router.get(
   "/invitations",
   authMiddleware,
   async (req: AuthenticatedRequest, res) => {
     try {
       const invitations = await authService.getUserInvitations(
-        req.user!.userId,
+        req.user!.userId
       );
 
       res.json({
@@ -286,12 +275,12 @@ router.get(
         code: "INTERNAL_ERROR",
       });
     }
-  },
+  }
 );
 
-// =====================================================
-// RESPONDER CONVITE
-// =====================================================
+/* =====================================================
+   RESPONDER CONVITE
+===================================================== */
 router.patch(
   "/invitations/:invitationId",
   authMiddleware,
@@ -310,7 +299,7 @@ router.patch(
       const result = await authService.respondToInvitation(
         req.user!.userId,
         invitationId,
-        accept,
+        accept
       );
 
       res.json({
@@ -324,12 +313,12 @@ router.patch(
         code: "INTERNAL_ERROR",
       });
     }
-  },
+  }
 );
 
-// =====================================================
-// SAIR DO DASHBOARD
-// =====================================================
+/* =====================================================
+   SAIR DO DASHBOARD
+===================================================== */
 router.delete(
   "/dashboards/:dashboardId/leave",
   authMiddleware,
@@ -339,7 +328,7 @@ router.delete(
 
       const success = await authService.leaveDashboard(
         req.user!.userId,
-        dashboardId,
+        dashboardId
       );
 
       res.json({
@@ -361,7 +350,7 @@ router.delete(
         code: "INTERNAL_ERROR",
       });
     }
-  },
+  }
 );
 
 export default router;

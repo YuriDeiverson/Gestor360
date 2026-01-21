@@ -3,7 +3,10 @@ import jwt from "jsonwebtoken";
 import { supabase, supabaseAdmin } from "./supabase";
 import { emailService } from "./emailService";
 
-const JWT_SECRET = process.env.JWT_SECRET || "your-super-secret-jwt-key";
+if (!process.env.JWT_SECRET) {
+  throw new Error("JWT_SECRET não definido");
+}
+const JWT_SECRET = process.env.JWT_SECRET;
 const JWT_EXPIRES_IN = "7d";
 
 export interface User {
@@ -18,6 +21,13 @@ export interface AuthTokens {
   accessToken: string;
   refreshToken: string;
   user: User;
+}
+
+export interface JWTPayload {
+  userId: string;
+  email: string;
+  iat?: number;
+  exp?: number;
 }
 
 export interface Dashboard {
@@ -53,6 +63,19 @@ class AuthService {
   ): Promise<AuthTokens> {
     try {
       console.log("Iniciando registro para email:", email);
+      
+      // Validar formato de email
+      if (!this.validateEmail(email)) {
+        throw new Error("Formato de email inválido");
+      }
+      
+      if (password.length < 6) {
+        throw new Error("A senha deve ter pelo menos 6 caracteres");
+      }
+      
+      if (!name.trim()) {
+        throw new Error("O nome é obrigatório");
+      }
       
       // Verificar se email já existe (usando cliente admin)
       const { data: existingUser, error: checkError } = await supabaseAdmin
@@ -111,6 +134,14 @@ class AuthService {
   // Login do usuário
   async login(email: string, password: string): Promise<AuthTokens> {
     try {
+      // Validar formato de email
+      if (!this.validateEmail(email)) {
+        throw new Error("Formato de email inválido");
+      }
+      
+      if (!password) {
+        throw new Error("A senha é obrigatória");
+      }
       // Buscar usuário (usando cliente admin)
       const { data: user, error } = await supabaseAdmin
         .from("users")
@@ -147,9 +178,15 @@ class AuthService {
     }
   }
 
+  // Validar formato de email
+  private validateEmail(email: string): boolean {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return emailRegex.test(email);
+  }
+
   // Gerar tokens JWT
   private generateTokens(user: User) {
-    const payload = { userId: user.id, email: user.email };
+    const payload: JWTPayload = { userId: user.id, email: user.email };
 
     const accessToken = jwt.sign(payload, JWT_SECRET, {
       expiresIn: JWT_EXPIRES_IN,
@@ -163,9 +200,9 @@ class AuthService {
   }
 
   // Verificar token
-  verifyToken(token: string): any {
+  verifyToken(token: string): JWTPayload {
     try {
-      return jwt.verify(token, JWT_SECRET);
+      return jwt.verify(token, JWT_SECRET) as JWTPayload;
     } catch (error) {
       throw new Error("Token inválido");
     }
@@ -411,7 +448,7 @@ class AuthService {
   // Buscar convites recebidos pelo usuário
   async getUserInvitations(userId: string): Promise<DashboardInvitation[]> {
     try {
-      const { data, error } = await supabase
+      const { data, error } = await supabaseAdmin
         .from("dashboard_invitations")
         .select(
           `
@@ -423,6 +460,7 @@ class AuthService {
           message,
           expires_at,
           created_at,
+          invite_token,
           dashboards (name),
           inviter:users!inviter_id (name)
         `,
