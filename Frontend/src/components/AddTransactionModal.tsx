@@ -17,6 +17,7 @@ interface AddTransactionModalProps {
     transaction: Omit<Transaction, "id" | "industry">,
   ) => Promise<void>;
   budgets: Budget[];
+  cards?: any[]; // Adicionar prop para cartões
 }
 
 const AddTransactionModal: React.FC<AddTransactionModalProps> = ({
@@ -24,6 +25,7 @@ const AddTransactionModal: React.FC<AddTransactionModalProps> = ({
   onClose,
   onAddTransaction,
   budgets = [],
+  cards = [], // Adicionar cards com valor padrão
 }) => {
   const today = new Date().toISOString().split("T")[0];
 
@@ -200,8 +202,10 @@ const AddTransactionModal: React.FC<AddTransactionModalProps> = ({
                   onChange={(e) => setAccount(e.target.value)}
                 >
                   <option value="">Selecione</option>
-                  {availableAccounts.map((acc) => (
-                    <option key={acc}>{acc}</option>
+                  {cards.map((card) => (
+                    <option key={card.id} value={card.id}>
+                      {card.name} ({card.bank})
+                    </option>
                   ))}
                 </select>
               </div>

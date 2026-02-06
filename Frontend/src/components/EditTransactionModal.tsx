@@ -16,6 +16,7 @@ interface EditTransactionModalProps {
   onEditTransaction: (transaction: Transaction) => void;
   transaction: Transaction;
   budgets: Budget[];
+  cards?: any[]; // Adicionar prop para cartões
 }
 
 const EditTransactionModal: React.FC<EditTransactionModalProps> = ({
@@ -24,6 +25,7 @@ const EditTransactionModal: React.FC<EditTransactionModalProps> = ({
   onEditTransaction,
   transaction,
   budgets,
+  cards = [], // Adicionar cards com valor padrão
 }) => {
   const [description, setDescription] = useState("");
   const [amount, setAmount] = useState("");
@@ -230,16 +232,15 @@ const EditTransactionModal: React.FC<EditTransactionModalProps> = ({
                   Conta
                 </label>
                 <select
-                  id="account"
+                  className={inputStyle}
                   value={account}
                   onChange={(e) => setAccount(e.target.value)}
-                  className={inputStyle}
                   required
                 >
                   <option value="">Selecione uma conta</option>
-                  {availableAccounts.map((acc) => (
-                    <option key={acc} value={acc}>
-                      {acc}
+                  {cards.map((card) => (
+                    <option key={card.id} value={card.id}>
+                      {card.name} ({card.bank})
                     </option>
                   ))}
                 </select>

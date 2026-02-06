@@ -200,7 +200,7 @@ const MultiSelectDropdown: React.FC<{
    HEADER
 ======================= */
 const Header: React.FC<HeaderProps> = ({ categories }) => {
-  const { filters, setFilters } = useFilters();
+  const { filters, setFilters, resetFilters } = useFilters();
   const [openDropdown, setOpenDropdown] = useState<string | null>(null);
   const [isDatePickerOpen, setIsDatePickerOpen] = useState(false);
   const [isFiltersVisible, setIsFiltersVisible] = useState(false);
@@ -301,6 +301,16 @@ const Header: React.FC<HeaderProps> = ({ categories }) => {
               isOpen={openDropdown === "status"}
               onToggle={() => setOpenDropdown("status")}
             />
+          </div>
+
+          {/* Botão para resetar para o mês atual */}
+          <div className="mt-4 flex justify-end">
+            <button
+              onClick={resetFilters}
+              className="px-4 py-2 text-sm bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors"
+            >
+              Mês Atual
+            </button>
           </div>
         </div>
       )}

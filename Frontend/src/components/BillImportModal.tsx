@@ -21,6 +21,7 @@ interface BillImportModalProps {
   isOpen: boolean;
   onClose: () => void;
   cards: any[];
+  budgets: any[];
   onImportTransactions: (transactions: any[]) => Promise<void>;
 }
 
@@ -28,12 +29,14 @@ const BillImportModal: React.FC<BillImportModalProps> = ({
   isOpen,
   onClose,
   cards,
+  budgets,
   onImportTransactions,
 }) => {
   const [currentStep, setCurrentStep] = useState(1);
-  const [selectedCard, setSelectedCard] = useState("");
+  const [selectedCard, setSelectedCard] = useState(""); // Vazio = opcional
   const [importSteps, setImportSteps] = useState<ImportStep[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const resetModal = () => {
@@ -42,6 +45,41 @@ const BillImportModal: React.FC<BillImportModalProps> = ({
     setImportSteps([]);
     setIsProcessing(false);
     if (fileInputRef.current) fileInputRef.current.value = "";
+  };
+
+  // Função para identificar o banco pelo nome do arquivo
+  const identifyBankFromFileName = (fileName: string): string => {
+    const name = fileName.toLowerCase();
+    
+    if (name.includes('nubank')) return 'Nubank';
+    if (name.includes('banco-do-brasil') || name.includes('bb')) return 'Banco do Brasil';
+    if (name.includes('itau') || name.includes('itaú')) return 'Itaú';
+    if (name.includes('santander')) return 'Santander';
+    if (name.includes('bradesco')) return 'Bradesco';
+    if (name.includes('caixa')) return 'Caixa';
+    if (name.includes('inter')) return 'Banco Inter';
+    if (name.includes('original')) return 'Banco Original';
+    if (name.includes('c6')) return 'C6 Bank';
+    if (name.includes('picpay')) return 'PicPay';
+    
+    return 'Cartão'; // Padrão se não identificar
+  };
+
+  // Função para encontrar o cartão correspondente pelo banco
+  const findCardByBank = (bankName: string) => {
+    return cards.find(card => 
+      card.bank && 
+      card.bank.toLowerCase() === bankName.toLowerCase()
+    );
+  };
+
+  // Função para encontrar o orçamento correspondente
+  const findBudgetByCategory = (category: string) => {
+    return budgets.find(budget => 
+      budget.name && 
+      (budget.name.toLowerCase() === category.toLowerCase() || 
+       budget.name.toLowerCase() === `${category.toLowerCase()} `) // Tenta com ou sem espaço
+    );
   };
 
   const closeModal = () => {
@@ -75,6 +113,12 @@ const BillImportModal: React.FC<BillImportModalProps> = ({
     throw new Error("Formato não suportado");
   };
 
+  const handleButtonClick = () => {
+    if (fileInputRef.current) {
+      fileInputRef.current.click();
+    }
+  };
+
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -83,6 +127,15 @@ const BillImportModal: React.FC<BillImportModalProps> = ({
 
     try {
       const raw = await processFile(file);
+
+      // Identificar banco pelo nome do arquivo
+      const bankName = identifyBankFromFileName(file.name);
+      
+      // Encontrar cartão correspondente
+      const card = findCardByBank(bankName);
+      
+      // Encontrar orçamento da categoria "Cartão"
+      const budget = findBudgetByCategory("Cartão");
 
       const transactions = raw.map((t: any) => {
         const isIncome = t.amount < 0;
@@ -104,22 +157,123 @@ const BillImportModal: React.FC<BillImportModalProps> = ({
           }
         }
 
-        return {
+        const transaction = {
           date: t.date,
           description: t.title,
           amount: Math.abs(t.amount),
           type: isIncome ? "income" : "expense",
-          category: isIncome ? undefined : "Cartões",
-          account: selectedCard, // ID do cartão selecionado
-          cardName: selectedCard, // Nome do cartão selecionado
+          category: "Cartão", // Categoria padrão para associar ao orçamento "Cartão"
+          account: card ? card.id : (selectedCard || ""), // ID do cartão encontrado ou selecionado (opcional)
+          cardName: bankName, // Nome do banco identificado
           method: "Cartão de Crédito",
-          budget_id: null,
+          budget_id: isIncome ? null : (budget ? budget.id : null), // Apenas despesas vão para o orçamento
           status: isInstallment ? "pending" : "completed", // Parcelas ficam pendentes
           installments: totalInstallments,
           currentInstallment: currentInstallment,
           totalAmount: isInstallment ? Math.abs(t.amount) * totalInstallments : Math.abs(t.amount),
           remainingAmount: isInstallment ? Math.abs(t.amount) * (totalInstallments - currentInstallment) : 0,
         };
+        
+        return transaction;
+      });
+
+      setImportSteps([
+        {
+          id: Date.now().toString(),
+          title: "Arquivo processado",
+          description: `${transactions.length} transações encontradas`,
+          status: "completed",
+          transactions,
+        },
+      ]);
+
+      setCurrentStep(2);
+    } catch (err: any) {
+      setImportSteps([
+        {
+          id: Date.now().toString(),
+          title: "Erro",
+          description: err.message,
+          status: "error",
+        },
+      ]);
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+  };
+
+  const handleDrop = async (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+    
+    const file = e.dataTransfer.files[0];
+    if (!file || !file.name.endsWith('.csv')) {
+      alert('Por favor, envie um arquivo CSV');
+      return;
+    }
+
+    // Processar o arquivo diretamente
+    setIsProcessing(true);
+    try {
+      const raw = await processFile(file);
+
+      // Identificar banco pelo nome do arquivo
+      const bankName = identifyBankFromFileName(file.name);
+      
+      // Encontrar cartão correspondente
+      const card = findCardByBank(bankName);
+      
+      // Encontrar orçamento da categoria "Cartão"
+      const budget = findBudgetByCategory("Cartão");
+
+      const transactions = raw.map((t: any) => {
+        const isIncome = t.amount < 0;
+        
+        // Verificar se é parcelado pelo título
+        const isInstallment = t.title && (
+          t.title.toLowerCase().includes('parcela') || 
+          t.title.toLowerCase().includes('/')
+        );
+        
+        // Extrair número da parcela se existir
+        let currentInstallment = 1;
+        let totalInstallments = 1;
+        if (isInstallment) {
+          const match = t.title.match(/(\d+)\/(\d+)/);
+          if (match) {
+            currentInstallment = parseInt(match[1]);
+            totalInstallments = parseInt(match[2]);
+          }
+        }
+
+        const transaction = {
+          date: t.date,
+          description: t.title,
+          amount: Math.abs(t.amount),
+          type: isIncome ? "income" : "expense",
+          category: "Cartão", // Categoria padrão para associar ao orçamento "Cartão"
+          account: card ? card.id : (selectedCard || ""), // ID do cartão encontrado ou selecionado (opcional)
+          cardName: bankName, // Nome do banco identificado
+          method: "Cartão de Crédito",
+          budget_id: isIncome ? null : (budget ? budget.id : null), // Apenas despesas vão para o orçamento
+          status: isInstallment ? "pending" : "completed", // Parcelas ficam pendentes
+          installments: totalInstallments,
+          currentInstallment: currentInstallment,
+          totalAmount: isInstallment ? Math.abs(t.amount) * totalInstallments : Math.abs(t.amount),
+          remainingAmount: isInstallment ? Math.abs(t.amount) * (totalInstallments - currentInstallment) : 0,
+        };
+        
+        return transaction;
       });
 
       setImportSteps([
@@ -191,6 +345,19 @@ const BillImportModal: React.FC<BillImportModalProps> = ({
                 </h3>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {/* Opção para nenhum cartão */}
+                  <div
+                    onClick={() => setSelectedCard("")}
+                    className={`p-4 rounded-xl border cursor-pointer transition ${
+                      selectedCard === ""
+                        ? "border-gray-500 bg-gray-50 ring-2 ring-gray-200"
+                        : "border-gray-200 hover:border-gray-400"
+                    }`}
+                  >
+                    <strong>Nenhum cartão</strong>
+                    <p className="text-sm text-gray-600">Importar sem associar a cartão</p>
+                  </div>
+                  
                   {cards.map(card => (
                     <div
                       key={card.id}
@@ -202,15 +369,25 @@ const BillImportModal: React.FC<BillImportModalProps> = ({
                       }`}
                     >
                       <strong>{card.name}</strong>
+                      <p className="text-sm text-gray-600">{card.bank}</p>
                     </div>
                   ))}
                 </div>
 
-                <div className="border-2 border-dashed rounded-xl p-8 text-center">
+                <div 
+                  className={`border-2 border-dashed rounded-xl p-8 text-center transition-colors ${
+                    isDragging 
+                      ? "border-blue-500 bg-blue-50" 
+                      : "border-gray-300 hover:border-gray-400"
+                  }`}
+                  onDragOver={handleDragOver}
+                  onDragLeave={handleDragLeave}
+                  onDrop={handleDrop}
+                >
                   <Upload className="mx-auto mb-3 text-blue-600" />
                   <p className="font-medium">Enviar fatura</p>
                   <p className="text-sm text-gray-500 mb-4">
-                    Arquivo CSV (date, title, amount)
+                    Arquivo CSV (date, title, amount) ou arraste e solte aqui
                   </p>
 
                   <input
@@ -219,12 +396,11 @@ const BillImportModal: React.FC<BillImportModalProps> = ({
                     accept=".csv"
                     onChange={handleFileUpload}
                     className="hidden"
-                    disabled={!selectedCard}
                   />
 
                   <button
-                    onClick={() => fileInputRef.current?.click()}
-                    disabled={!selectedCard || isProcessing}
+                    onClick={handleButtonClick}
+                    disabled={isProcessing}
                     className="px-6 py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 disabled:opacity-50"
                   >
                     {isProcessing ? "Processando..." : "Selecionar arquivo"}

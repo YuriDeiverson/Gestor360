@@ -47,6 +47,7 @@ export function convertApiCardToFrontend(apiCard: ApiCard): Card {
 export const cardsApi = {
   async getAll(dashboardId?: string): Promise<Card[]> {
     try {
+      const token = localStorage.getItem('authToken');
       const url = dashboardId
         ? `${API_BASE_URL}/api/cards?dashboard_id=${dashboardId}`
         : `${API_BASE_URL}/api/cards`;
@@ -55,6 +56,7 @@ export const cardsApi = {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
         },
       });
 
@@ -72,10 +74,12 @@ export const cardsApi = {
 
   async create(card: Omit<Card, 'id'>): Promise<Card> {
     try {
+      const token = localStorage.getItem('authToken');
       const response = await fetch(`${API_BASE_URL}/api/cards`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
         },
         body: JSON.stringify({
           dashboard_id: (card as any).dashboardId || '',
@@ -102,10 +106,12 @@ export const cardsApi = {
 
   async update(id: string, card: Partial<Card>): Promise<Card> {
     try {
+      const token = localStorage.getItem('authToken');
       const response = await fetch(`${API_BASE_URL}/api/cards/${id}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
         },
         body: JSON.stringify({
           name: card.name,
@@ -131,10 +137,12 @@ export const cardsApi = {
 
   async delete(id: string): Promise<void> {
     try {
+      const token = localStorage.getItem('authToken');
       const response = await fetch(`${API_BASE_URL}/api/cards/${id}`, {
         method: 'DELETE',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
         },
       });
 

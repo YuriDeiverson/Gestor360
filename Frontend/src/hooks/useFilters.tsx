@@ -18,14 +18,14 @@ interface FiltersContextType {
 const FiltersContext = createContext<FiltersContextType | undefined>(undefined);
 
 const getInitialFilters = (): Filters => {
-  const endDate = new Date();
-  const startDate = new Date();
-  startDate.setFullYear(endDate.getFullYear() - 1); // Últimos 12 meses (1 ano)
+  const now = new Date();
+  const startDate = new Date(now.getFullYear(), now.getMonth(), 1); // Primeiro dia do mês atual
+  const endDate = new Date(now.getFullYear(), now.getMonth() + 1, 0); // Último dia do mês atual
 
   const defaultFilters: Filters = {
     startDate: startDate.toISOString().split("T")[0],
     endDate: endDate.toISOString().split("T")[0],
-    accounts: [], // VAZIO = MOSTRA TODAS AS CONTAS
+    accounts: [], // VAZIO = MOSTRA TODAS AS CONTAS ou NENHUMA SE NÃO HOUVER CONTAS
     status: "all",
   };
 
@@ -48,14 +48,14 @@ const getInitialFilters = (): Filters => {
         return {
           ...parsed,
           accounts: [...availableAccounts],
-          industries: parsed.industries || [], // Manter categorias existentes ou vazio
         };
       }
 
       return parsed;
     }
   } catch (error) {
-    console.error("Failed to parse filters from localStorage", error);
+    console.error("Erro ao carregar filtros do localStorage:", error);
+    return defaultFilters;
   }
 
   return defaultFilters;

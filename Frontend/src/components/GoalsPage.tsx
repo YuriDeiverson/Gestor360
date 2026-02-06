@@ -5,12 +5,14 @@ import { ICONS } from "../constants";
 import { getGoalImage, getGoalType } from "../utils/goalImages";
 import AddGoalModal from "./AddGoalModal";
 import AddFundsModal from "./AddFundsModal";
+import WithdrawFundsModal from "./WithdrawFundsModal";
 import EditGoalModal from "./EditGoalModal";
 import { Meta } from "../utils/api";
 
 interface GoalCardProps {
   goal: Goal;
   onAddFundsClick: (goal: Goal) => void;
+  onWithdrawFundsClick: (goal: Goal) => void;
   onEditClick: (goal: Goal) => void;
   onDeleteClick: (goalId: string) => void;
   budgets: Budget[];
@@ -19,6 +21,7 @@ interface GoalCardProps {
 const GoalCard: React.FC<GoalCardProps> = ({
   goal,
   onAddFundsClick,
+  onWithdrawFundsClick,
   onEditClick,
   onDeleteClick,
   budgets,
@@ -143,12 +146,28 @@ const GoalCard: React.FC<GoalCardProps> = ({
 
           {/* Ações */}
           <div className="flex flex-col gap-2">
-            <button
-              onClick={() => onAddFundsClick(goal)}
-              className="w-full px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors font-semibold text-sm"
-            >
-              Adicionar Fundos
-            </button>
+            <div className="flex gap-2">
+              <button
+                onClick={() => onAddFundsClick(goal)}
+                className="flex-1 px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors font-semibold text-sm"
+              >
+                Adicionar
+              </button>
+              
+              {goal.currentAmount > 0 && (
+                <>
+                  <div className="flex items-center text-gray-400">
+                    -
+                  </div>
+                  <button
+                    onClick={() => onWithdrawFundsClick(goal)}
+                    className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors font-semibold text-sm"
+                  >
+                    Retirar
+                  </button>
+                </>
+              )}
+            </div>
             
             {status === 'completed' && (
               <div className="mt-3 p-2 bg-green-50 border border-green-200 rounded-lg">
@@ -168,6 +187,7 @@ interface GoalsPageProps {
   editGoal: (editedGoal: Goal) => void;
   deleteGoal: (goalId: string) => void;
   addFunds: (goalId: string, amount: number) => void;
+  withdrawFunds: (goalId: string, amount: number) => void;
   budgets: Budget[];
   categories: any[];
 }
@@ -188,12 +208,14 @@ const GoalsPage: React.FC<GoalsPageProps> = ({
   editGoal,
   deleteGoal,
   addFunds,
+  withdrawFunds,
   budgets,
   categories,
 }) => {
   const [isAddGoalModalOpen, setAddGoalModalOpen] = useState(false);
   const [selectedGoal, setSelectedGoal] = useState<Goal | null>(null);
   const [editingGoal, setEditingGoal] = useState<Goal | null>(null);
+  const [selectedGoalForWithdraw, setSelectedGoalForWithdraw] = useState<Goal | null>(null);
   
   // Converter Meta[] para Goal[]
   const convertedGoals: Goal[] = goals.map(convertMetaToGoal);
@@ -201,6 +223,11 @@ const GoalsPage: React.FC<GoalsPageProps> = ({
   const handleAddFunds = (goalId: string, amount: number) => {
     addFunds(goalId, amount);
     setSelectedGoal(null);
+  };
+
+  const handleWithdrawFunds = (goalId: string, amount: number) => {
+    withdrawFunds(goalId, amount);
+    setSelectedGoalForWithdraw(null);
   };
 
   const handleEditGoal = (goal: Goal) => {
@@ -251,6 +278,7 @@ const GoalsPage: React.FC<GoalsPageProps> = ({
               goal={goal}
               budgets={budgets}
               onAddFundsClick={setSelectedGoal}
+              onWithdrawFundsClick={setSelectedGoalForWithdraw}
               onEditClick={handleEditGoal}
               onDeleteClick={deleteGoal}
             />
@@ -282,6 +310,15 @@ const GoalsPage: React.FC<GoalsPageProps> = ({
           onClose={() => setSelectedGoal(null)}
           onAddFunds={handleAddFunds}
           goal={selectedGoal}
+        />
+      )}
+
+      {selectedGoalForWithdraw && (
+        <WithdrawFundsModal
+          isOpen={!!selectedGoalForWithdraw}
+          onClose={() => setSelectedGoalForWithdraw(null)}
+          onWithdrawFunds={handleWithdrawFunds}
+          goal={selectedGoalForWithdraw}
         />
       )}
     </div>

@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect, useCallback } from "react";
+import React, { useState, useMemo, useEffect, useCallback, useRef } from "react";
 import { useAuth } from "../contexts/AuthContext";
 import { useFilters } from "../hooks/useFilters";
 import { useToast } from "../hooks/useToast";
@@ -12,7 +12,35 @@ import InstallmentNotification from "./InstallmentNotification";
 import {
   transactionsApi, budgetsApi, metasApi, API_BASE_URL
 } from "../utils/api";
-import { cardsApi } from "../utils/cardsApi";
+import { cardsApi, Card as ApiCard } from "../utils/cardsApi";
+
+// Interface para o Card do Frontend
+interface Card {
+  id: string;
+  name: string;
+  bank: string;
+  limit: number;
+  closingDay: number;
+  dueDay: number;
+  currentBalance: number;
+  status: 'active' | 'inactive' | 'overdue';
+  nextDueDate?: string;
+}
+
+// Função para converter da API para o Frontend
+function convertApiCardToFrontend(apiCard: any): Card {
+  return {
+    id: apiCard.id,
+    name: apiCard.name,
+    bank: apiCard.bank || "",
+    limit: apiCard.card_limit,
+    closingDay: apiCard.closing_day,
+    dueDay: apiCard.due_day,
+    currentBalance: apiCard.current_balance || 0,
+    status: apiCard.status,
+    nextDueDate: apiCard.next_due_date,
+  };
+}
 import { Budget, Transaction, Goal } from "../utils/types";
 import { Meta, BudgetCategory } from "../utils/api";
 import DashboardContent from "./DashboardContent";
@@ -20,6 +48,8 @@ import TransactionsPage from "./TransactionsPage";
 import GoalsPage from "./GoalsPage";
 import BudgetsPage from "./BudgetsPage";
 import CardsPage from "./CardsPage";
+import CardsDashboardPage from "./CardsDashboardPage";
+import CardsDashboard from "./CardsDashboard";
 import BillImportModal from "./BillImportModal";
 
 // Tipo simples para Category
@@ -29,7 +59,6 @@ interface Category {
 }
 
 const DashboardPage: React.FC = () => {
-  console.log("🚀 DashboardPage: Componente carregado");
 
   const { user, logout, currentDashboard, switchDashboard } = useAuth();
   const { filters, setFilters } = useFilters();
@@ -45,9 +74,58 @@ const DashboardPage: React.FC = () => {
 
   // Data state
   const [transactions, setTransactions] = useState<Transaction[]>([]);
-  const [goals, setGoals] = useState<Goal[]>([]);
+  const [goals, setGoals] = useState<Meta[]>([]);
+  const [localGoalsChanges, setLocalGoalsChanges] = useState<Set<string>>(new Set());
+  
+  // Usar useRef para manter estado persistente
+  const localGoalsChangesRef = useRef<Set<string>>(new Set());
+
+  // Log para verificar inicialização do estado
+  useEffect(() => {
+    console.log("🔍 Estado localGoalsChanges inicializado:", Array.from(localGoalsChanges));
+    console.log("🔍 Ref localGoalsChanges:", Array.from(localGoalsChangesRef.current));
+  }, [localGoalsChanges]); 
   const [budgetCategories, setBudgetCategories] = useState<BudgetCategory[]>([]);
-  const [cards, setCards] = useState<any[]>([]);
+  const [cards, setCards] = useState<Card[]>([]);
+
+  // Funções para gerenciar cartões
+  const addCard = async (card: Omit<Card, "id">) => {
+    try {
+      // Obter o dashboard_id do dashboard atual
+      const dashboardId = currentDashboard?.id;
+      if (!dashboardId) {
+        throw new Error('Nenhum dashboard selecionado');
+      }
+
+      const apiCard = await cardsApi.create({
+        ...card,
+        dashboardId: dashboardId
+      } as any);
+      const frontendCard = convertApiCardToFrontend(apiCard);
+      setCards(prev => [...prev, frontendCard]);
+    } catch (error) {
+      console.error("Erro ao criar cartão:", error);
+    }
+  };
+
+  const editCard = async (card: Card) => {
+    try {
+      const apiCard = await cardsApi.update(card.id, card as any);
+      const frontendCard = convertApiCardToFrontend(apiCard);
+      setCards(prev => prev.map(c => c.id === card.id ? frontendCard : c));
+    } catch (error) {
+      console.error("Erro ao editar cartão:", error);
+    }
+  };
+
+  const deleteCard = async (id: string) => {
+    try {
+      await cardsApi.delete(id);
+      setCards(prev => prev.filter(c => c.id !== id));
+    } catch (error) {
+      console.error("Erro ao excluir cartão:", error);
+    }
+  };
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
@@ -154,6 +232,7 @@ const DashboardPage: React.FC = () => {
         }));
       } catch (error) {
         console.error("Erro ao carregar cartões:", error);
+        cardsData = [];
       }
 
    const [transactionsData, goalsData, budgetsData] =
@@ -164,10 +243,11 @@ const DashboardPage: React.FC = () => {
   ]);
 
       console.log("✅ Dados carregados:");
-      console.log("  📈 Transações:", transactionsData.length);
-      console.log("  🎯 Metas:", goalsData.length);
-      console.log("  💰 Orçamentos:", budgetsData.length);
-      console.log("  💳 Cartões:", cardsData.length);
+      console.log(`  📈 Transações: ${transactionsData.length}`);
+      console.log(`  🎯 Metas: ${goalsData.length}`);
+      console.log(`  💰 Orçamentos: ${budgetsData.length}`);
+      console.log(`  💳 Cartões: ${cardsData.length}`);
+      console.log("  🔍 Estrutura dos orçamentos:", JSON.stringify(budgetsData, null, 2));
       
       // Debug: verificar primeiras transações
       console.log("🔍 Debug - Primeiras 3 transações recebidas:", transactionsData.slice(0, 3));
@@ -179,7 +259,37 @@ const DashboardPage: React.FC = () => {
       console.log("  - Cards:", cardsData.length);
       
       setTransactions(transactionsData);
-      setGoals(goalsData);
+      
+      // Atualizar metas apenas se não houver alterações locais pendentes
+      setGoals((prevGoals) => {
+        console.log("🔍 Debug - Atualizando metas:");
+        console.log("  - Alterações locais pendentes (estado):", Array.from(localGoalsChanges));
+        console.log("  - Alterações locais pendentes (ref):", Array.from(localGoalsChangesRef.current));
+        console.log("  - Metas anteriores:", prevGoals.map(g => ({ id: g.id, currentAmount: g.currentAmount })));
+        console.log("  - Metas da API:", goalsData.map(g => ({ id: g.id, currentAmount: g.currentAmount })));
+        
+        // Usar o ref para verificar alterações locais
+        if (localGoalsChangesRef.current.size === 0) {
+          // Se não há alterações locais, usar dados da API
+          console.log("✅ Usando dados da API (sem alterações locais)");
+          return goalsData;
+        } else {
+          // Se há alterações locais, mesclar dados
+          console.log("🔄 Mesclando dados da API com alterações locais");
+          const mergedGoals = goalsData.map((apiGoal) => {
+            const localGoal = prevGoals.find(g => g.id === apiGoal.id);
+            if (localGoal && localGoalsChangesRef.current.has(apiGoal.id)) {
+              // Manter valor local se foi alterado
+              console.log(`🔒 Mantendo valor local para meta ${apiGoal.id}: ${localGoal.currentAmount} (API: ${apiGoal.currentAmount})`);
+              return { ...apiGoal, currentAmount: localGoal.currentAmount };
+            }
+            return apiGoal;
+          });
+          console.log("📊 Resultado final:", mergedGoals.map(g => ({ id: g.id, currentAmount: g.currentAmount })));
+          return mergedGoals;
+        }
+      });
+      
       setBudgetCategories(budgetsData);
       setCards(cardsData);
       
@@ -198,16 +308,22 @@ const DashboardPage: React.FC = () => {
 
   // Carregar dados da API
   useEffect(() => {
+    console.log("🔄 useEffect de loadData disparado");
+    console.log("🔍 localGoalsChanges no início do useEffect:", Array.from(localGoalsChanges));
     loadData();
 
     // Auto-refresh a cada 30 segundos para ver alterações de outros usuários
-    const refreshInterval = setInterval(() => {
-      console.log("🔄 Auto-refresh: Recarregando dados...");
+    const interval = setInterval(() => {
+      console.log("⏰ Auto-refresh disparado (30s)");
+      console.log("🔍 localGoalsChanges no auto-refresh:", Array.from(localGoalsChanges));
       loadData();
-    }, 30000); // 30 segundos (aumentado de 10 para reduzir conflitos)
+    }, 30000);
 
-    return () => clearInterval(refreshInterval);
-  }, [loadData]);
+    return () => {
+      console.log("🛑 Limpando intervalo do auto-refresh");
+      clearInterval(interval);
+    };
+  }, [currentDashboard?.id]); // Removido loadData das dependências
 
   // Sincronizar filtros com categorias disponíveis
   useEffect(() => {
@@ -238,8 +354,15 @@ const DashboardPage: React.FC = () => {
 
       const dateMatch =
         transactionDate >= startDate && transactionDate <= endDate;
-      const accountMatch =
-        filters.accounts.length === 0 || filters.accounts.includes(t.account);
+      
+      // Para transações de cartão, sempre passar no filtro de conta
+      // ou se não houver contas selecionadas
+      const isCardTransaction = (t.cardName && t.cardName !== "") || (t.method === "Cartão de Crédito");
+      const accountMatch = 
+        filters.accounts.length === 0 || 
+        isCardTransaction || 
+        filters.accounts.includes(t.account);
+      
       const categoryMatch = true; // Sem filtro de categoria por enquanto
       const statusMatch =
         filters.status === "all" || filters.status === t.status;
@@ -252,7 +375,21 @@ const DashboardPage: React.FC = () => {
           accountMatch,
           categoryMatch,
           statusMatch,
+          isCardTransaction: isCardTransaction,
+          transactionAccount: t.account,
+          transactionCardName: t.cardName,
+          transactionMethod: t.method,
+          filtersAccounts: filters.accounts,
         });
+      } else {
+        // Log das transações que passaram no filtro
+        if (t.cardName) {
+          console.log(`✅ Transação de cartão "${t.description}" passou:`, {
+            cardName: t.cardName,
+            account: t.account,
+            method: t.method,
+          });
+        }
       }
 
       return dateMatch && accountMatch && categoryMatch && statusMatch;
@@ -270,21 +407,14 @@ const DashboardPage: React.FC = () => {
   }, [transactions, filters]);
 
   // Handlers to modify data
-  const addTransaction = async (
-    newTransaction: Omit<Transaction, "id">,
-    
-  ) => {
-    console.log("🔄 Tentando adicionar transação:", newTransaction);
-    console.log("📌 Dashboard atual:", currentDashboard?.id);
-    console.log("💳 Método da transação:", newTransaction.method);
-    console.log("🆔 Budget ID:", (newTransaction as any).budget_id);
-
-      
+  const addTransaction = async (newTransaction: any) => {
     try {
       // O modal envia budget_id diretamente, não budgetId
       const budgetId = (newTransaction as any).budget_id || (newTransaction as any).budgetId;
-          // Para salário e transações com account (cartão), budgetId é opcional
-      if (!budgetId && !newTransaction.account && newTransaction.method !== "Salário") {
+      
+      // Para salário e transações com account (cartão), budgetId é opcional
+      // Transações de cartão de crédito não precisam de budget_id
+      if (!budgetId && !newTransaction.account && newTransaction.method !== "Salário" && newTransaction.method !== "Cartão de Crédito") {
         throw new Error("budget_id é obrigatório");
       }
 
@@ -311,12 +441,12 @@ const DashboardPage: React.FC = () => {
         status: newTransaction.status ?? "completed",
       } as any;
 
-      console.log("📤 Enviando para API:", apiTransaction);
+      console.log(" Enviando para API:", apiTransaction);
       await transactionsApi.create(apiTransaction);
-      console.log("✅ Transação salva no backend!");
+      console.log(" Transação salva no backend!");
 
       // RECARREGAR todos os dados após criar para garantir sincronização
-      console.log("� Recarregando dados após criar transação...");
+      console.log(" Recarregando dados após criar transação...");
       await loadData();
 
       showSuccess(
@@ -324,7 +454,12 @@ const DashboardPage: React.FC = () => {
         `"${newTransaction.description}" foi adicionada com sucesso!`
       );
     } catch (error) {
-      console.log("❌ Erro ao salvar transação:", error);
+      console.error(" Erro ao salvar transação:", error);
+      console.error(" Detalhes do erro:", {
+        message: error.message,
+        stack: error.stack,
+        transaction: newTransaction
+      });
       showError(
         "Erro ao criar transação",
         "Não foi possível salvar a transação. Tente novamente.",
@@ -573,11 +708,93 @@ const DashboardPage: React.FC = () => {
   };
 
   const addFundsToGoal = (goalId: string, amount: number) => {
+    console.log("💰 Adicionando fundos:", goalId, amount);
+    console.log("🔍 Estado localGoalsChanges antes:", Array.from(localGoalsChanges));
+    console.log("🔍 Ref localGoalsChanges antes:", Array.from(localGoalsChangesRef.current));
+    
+    setGoals((prev) => {
+      const updated = prev.map((g) =>
+        g.id === goalId ? { ...g, currentAmount: g.currentAmount + amount } : g,
+      );
+      console.log("📊 Estado goals após atualização:", updated.map(g => ({ id: g.id, currentAmount: g.currentAmount })));
+      return updated;
+    });
+    
+    // Marcar que esta meta foi alterada localmente (usando ref)
+    localGoalsChangesRef.current.add(goalId);
+    setLocalGoalsChanges(new Set(localGoalsChangesRef.current));
+    
+    console.log("🔒 Estado localGoalsChanges após marcação:", Array.from(localGoalsChanges));
+    console.log("🔒 Ref localGoalsChanges após marcação:", Array.from(localGoalsChangesRef.current));
+    
+    // Tentar sincronizar com a API após um pequeno delay para garantir que o estado foi atualizado
+    setTimeout(() => {
+      console.log("🔄 Iniciando sincronização após delay...");
+      syncGoalWithAPI(goalId);
+    }, 100);
+  };
+
+  const withdrawFundsFromGoal = (goalId: string, amount: number) => {
     setGoals((prev) =>
       prev.map((g) =>
-        g.id === goalId ? { ...g, currentAmount: g.currentAmount + amount } : g,
+        g.id === goalId ? { ...g, currentAmount: Math.max(0, g.currentAmount - amount) } : g,
       ),
     );
+    // Marcar que esta meta foi alterada localmente
+    setLocalGoalsChanges(prev => new Set([...prev, goalId]));
+    
+    // Tentar sincronizar com a API após um pequeno delay para garantir que o estado foi atualizado
+    setTimeout(() => {
+      syncGoalWithAPI(goalId);
+    }, 100);
+  };
+
+  const syncGoalWithAPI = async (goalId: string) => {
+    try {
+      console.log("🔄 syncGoalWithAPI iniciado para:", goalId);
+      console.log("🔍 localGoalsChanges no início da sync:", Array.from(localGoalsChanges));
+      console.log("🔍 Ref localGoalsChanges no início da sync:", Array.from(localGoalsChangesRef.current));
+      
+      // Obter o valor mais recente do estado usando uma função callback
+      let currentGoal: Meta | undefined;
+      setGoals(prev => {
+        currentGoal = prev.find(g => g.id === goalId);
+        console.log("📊 Meta encontrada para sync:", currentGoal?.id, currentGoal?.currentAmount);
+        return prev; // Não modificar o estado, apenas obter o valor
+      });
+      
+      if (currentGoal && currentDashboard?.id) {
+        console.log("🔄 Sincronizando meta com API:", goalId);
+        console.log("💰 Valor atual:", currentGoal.currentAmount);
+        
+        await metasApi.update(goalId, {
+          nome: currentGoal.name,
+          valor_alvo: currentGoal.targetAmount,
+          valor_atual: currentGoal.currentAmount,
+          data_limite: currentGoal.deadline,
+          descricao: currentGoal.budgetId || ""
+        });
+        
+        console.log("🔍 localGoalsChanges antes de limpar:", Array.from(localGoalsChanges));
+        console.log("🔍 Ref localGoalsChanges antes de limpar:", Array.from(localGoalsChangesRef.current));
+        
+        // NÃO limpar imediatamente - esperar um pouco para garantir que o auto-refresh veja a alteração
+        setTimeout(() => {
+          localGoalsChangesRef.current.delete(goalId);
+          setLocalGoalsChanges(new Set(localGoalsChangesRef.current));
+          console.log("🗑️ Removendo goalId das alterações locais (delayed):", goalId);
+          console.log("🔍 Ref localGoalsChanges após limpar (delayed):", Array.from(localGoalsChangesRef.current));
+        }, 1000); // Esperar 1 segundo antes de limpar
+        
+        console.log("✅ Meta sincronizada com sucesso");
+      } else {
+        console.log("❌ Meta não encontrada ou sem dashboard");
+      }
+    } catch (error) {
+      console.error("❌ Erro ao sincronizar meta com API:", error);
+      console.log("🔍 localGoalsChanges após erro:", Array.from(localGoalsChanges));
+      console.log("🔍 Ref localGoalsChanges após erro:", Array.from(localGoalsChangesRef.current));
+    }
   };
 
   const addBudget = async (newBudget: Omit<BudgetCategory, "id">) => {
@@ -711,111 +928,13 @@ const DashboardPage: React.FC = () => {
     return response.json();
   };
 
-  // Funções para gerenciar cartões
-  const editCard = async (updatedCard: any) => {
-    try {
-      const backendResponse = await authenticatedFetch(`/api/cards/${updatedCard.id}`, {
-        method: 'PUT',
-        body: JSON.stringify({
-          name: updatedCard.name,
-          bank: updatedCard.bank,
-          card_limit: updatedCard.limit,
-          closing_day: updatedCard.closingDay,
-          due_day: updatedCard.dueDay,
-          status: updatedCard.status
-        })
-      });
-      
-      // Mapear resposta do backend para o formato do frontend
-      const frontendCard = {
-        id: backendResponse.id,
-        name: backendResponse.name,
-        bank: backendResponse.bank,
-        limit: backendResponse.card_limit,
-        closingDay: backendResponse.closing_day,
-        dueDay: backendResponse.due_day,
-        currentBalance: backendResponse.current_balance,
-        nextDueDate: backendResponse.next_due_date,
-        status: backendResponse.status
-      };
-      
-      // Atualizar o estado com o cartão atualizado
-      setCards(prev => prev.map(card => 
-        card.id === frontendCard.id ? frontendCard : card
-      ));
-      showSuccess("Cartão atualizado", `${updatedCard.name} foi atualizado com sucesso!`);
-    } catch (error) {
-      console.error("Erro ao editar cartão:", error);
-      showError("Erro ao editar cartão", error instanceof Error ? error.message : "Tente novamente");
-    }
-  };
-
-  const deleteCard = async (cardId: string) => {
-    const card = cards.find(c => c.id === cardId);
-    if (!card) return;
-    
-    const confirmed = await showConfirmation({
-      title: "Excluir Cartão",
-      message: `Tem certeza que deseja excluir o cartão "${card.name}"?`,
-      confirmText: "Excluir",
-      cancelText: "Cancelar",
-      type: "danger",
-    });
-
-    if (confirmed) {
-      try {
-        await authenticatedFetch(`/api/cards/${cardId}`, {
-          method: 'DELETE'
-        });
-
-        // Remover o cartão do estado
-        setCards(prev => prev.filter(c => c.id !== cardId));
-        showSuccess("Cartão excluído", `${card.name} foi removido com sucesso!`);
-      } catch (error) {
-        console.error("Erro ao excluir cartão:", error);
-        showError("Erro ao excluir cartão", error instanceof Error ? error.message : "Tente novamente");
-      }
-    }
-  };
-
-  const addCard = async (newCard: any) => {
-    try {
-      // Obter os dashboards do usuário e usar o primeiro
-      const dashboards = await authenticatedFetch('/api/auth/dashboards');
-      if (!dashboards || !dashboards.data || dashboards.data.length === 0) {
-        throw new Error('Nenhum dashboard encontrado');
-      }
-
-      const dashboard_id = dashboards.data[0].id;
-
-      // Fazer a chamada para criar o cartão
-      const createdCard = await authenticatedFetch('/api/cards', {
-        method: 'POST',
-        body: JSON.stringify({
-          dashboard_id,
-          name: newCard.name,
-          bank: newCard.bank,
-          card_limit: newCard.limit,
-          closing_day: newCard.closingDay,
-          due_day: newCard.dueDay
-        })
-      });
-      
-      // Atualizar o estado com o cartão criado
-      setCards(prev => [...prev, createdCard]);
-      showSuccess("Cartão adicionado", `${newCard.name} foi adicionado com sucesso!`);
-    } catch (error) {
-      console.error("Erro ao adicionar cartão:", error);
-      showError("Erro ao adicionar cartão", error instanceof Error ? error.message : "Tente novamente");
-    }
-  };
-
-  
+  // Função para lidar com a mudança de página
   const handleSetActivePage = (page: string) => {
     console.log("📄 Mudando para página:", page);
     setActivePage(page as typeof activePage);
   };
 
+  // ... (rest of the code remains the same)
   const renderContent = () => {
     switch (activePage) {
       case "dashboard":
@@ -825,6 +944,7 @@ const DashboardPage: React.FC = () => {
             goals={goals}
             setActivePage={handleSetActivePage}
             payInstallment={payInstallment}
+            cards={cards}
           />
         );
       case "transactions":
@@ -852,7 +972,7 @@ const DashboardPage: React.FC = () => {
         return (
           <BudgetsPage
             budgetCategories={budgetCategories as any}
-            transactions={filteredTransactions}
+            transactions={transactions.filter(t => t.type === "expense" && t.budgetId)} // Apenas despesas com orçamento
             addBudget={addBudget as any}
             editBudget={editBudget as any}
             deleteBudget={deleteBudget}
@@ -860,8 +980,9 @@ const DashboardPage: React.FC = () => {
         );
       case "cards":
         return (
-          <CardsPage
+          <CardsDashboardPage
             cards={cards}
+            transactions={transactions} // Usar todas as transações, não apenas as filtradas
             onAddCard={addCard}
             onEditCard={editCard}
             onDeleteCard={deleteCard}
@@ -875,6 +996,7 @@ const DashboardPage: React.FC = () => {
   editGoal={editGoal}
   deleteGoal={deleteGoal}
   addFunds={addFundsToGoal}
+  withdrawFunds={withdrawFundsFromGoal}
   budgets={budgetCategories.map(b => ({
     id: b.id,
     name: b.name,

@@ -27,13 +27,13 @@ const BudgetsPage: React.FC<BudgetsPageProps> = ({
 
   /* =====================
      GASTO REAL POR CATEGORIA (usando budgetId)
-     Calcula o total realizado baseado nas transações de despesa completadas
+     Calcula o total realizado baseado nas transações de despesa completadas e pendentes
   ===================== */
   const spendingByCategory = useMemo(() => {
     const map: Record<string, number> = {};
 
     transactions
-      .filter((t) => t.type === "expense" && t.status === "completed" && t.budgetId)
+      .filter((t) => t.type === "expense" && t.budgetId) // Apenas despesas com orçamento
       .forEach((t) => {
         // Usar budgetId (ID do orçamento) para fazer o match correto
         const budgetKey = t.budgetId!;

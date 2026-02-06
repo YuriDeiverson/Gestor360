@@ -10,6 +10,7 @@ interface DashboardContentProps {
   goals: Goal[];
   setActivePage: (page: string) => void;
   payInstallment?: (transaction: Transaction) => void;
+  cards?: any[]; // Adicionar prop para cartões
 }
 
 type ChartType = "line" | "area" | "bar";
@@ -18,11 +19,64 @@ const DashboardContent: React.FC<DashboardContentProps> = ({
   transactions,
   setActivePage,
   payInstallment,
+  cards = [], // Adicionar cards com valor padrão
 }) => {
   const [chartType, setChartType] = useState<ChartType>("area");
   const [selectedYear, setSelectedYear] = useState<number>(
     new Date().getFullYear(),
   );
+
+  // Função para formatar moeda
+  const formatCurrency = (value: number) => {
+    return value.toLocaleString("pt-BR", {
+      style: "currency",
+      currency: "BRL",
+    });
+  };
+
+  /* =====================
+     CARDS SUMMARY (Faturas)
+  ===================== */
+  const cardsSummary = useMemo(() => {
+    if (!cards || cards.length === 0) {
+      return { currentInvoice: 0, nextInvoice: 0 };
+    }
+
+    // Agrupar transações por cartão
+    const cardGroups: Record<string, Transaction[]> = {};
+    
+    transactions.forEach(transaction => {
+      // Apenas transações de cartão de crédito E que sejam despesas
+      if (transaction.method === "Cartão de Crédito" && transaction.type === "expense") {
+        const accountId = transaction.account;
+        if (!cardGroups[accountId]) {
+          cardGroups[accountId] = [];
+        }
+        cardGroups[accountId].push(transaction);
+      }
+    });
+
+    // Calcular totais para todos os cartões
+    let totalCurrentInvoice = 0;
+    let totalNextInvoice = 0;
+
+    cards.forEach(card => {
+      const cardTransactions = cardGroups[card.id] || [];
+      const expenses = cardTransactions.filter(t => t.type === "expense");
+      const pending = cardTransactions.filter(t => t.status === "pending");
+
+      const totalSpent = expenses.reduce((sum, t) => sum + (t.amount || 0), 0);
+      const pendingAmount = pending.reduce((sum, t) => sum + (t.amount || 0), 0);
+
+      totalCurrentInvoice += totalSpent;
+      totalNextInvoice += pendingAmount;
+    });
+
+    return {
+      currentInvoice: totalCurrentInvoice,
+      nextInvoice: totalNextInvoice
+    };
+  }, [transactions, cards]);
 
   /* =====================
      AVAILABLE YEARS
@@ -114,8 +168,8 @@ const DashboardContent: React.FC<DashboardContentProps> = ({
         />
         <SummaryCard
           title="Cartões"
-          value={0}
-          subtitle="Em breve"
+          value={cardsSummary.currentInvoice}
+          subtitle={`Próxima fatura: ${formatCurrency(cardsSummary.nextInvoice)}`}
           icon={ICONS.creditCard}
           variant="neutral"
         />

@@ -8,11 +8,7 @@ import {
 } from "./types";
 
 const ACCOUNTS = [
-  "Conta Corrente",
   "Cartão de Crédito",
-  "Investimentos",
-  "Poupança",
-  "Conta Principal",
 ];
 const INDUSTRIES = [
   "Tecnologia",
