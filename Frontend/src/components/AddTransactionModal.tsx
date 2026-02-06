@@ -108,21 +108,21 @@ const AddTransactionModal: React.FC<AddTransactionModalProps> = ({
   return (
     <Portal>
       <div
-        className="fixed inset-0 bg-black/60 flex items-center justify-center z-50"
+        className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4"
         onClick={onClose}
       >
         <div
-          className="bg-white rounded-2xl p-6 w-full max-w-2xl relative"
+          className="bg-white rounded-xl sm:rounded-2xl p-4 sm:p-6 w-full max-w-lg sm:max-w-2xl relative max-h-[90vh] overflow-y-auto"
           onClick={(e) => e.stopPropagation()}
         >
           <button
             onClick={onClose}
-            className="absolute top-4 right-4 text-gray-400"
+            className="absolute top-3 sm:top-4 right-3 sm:right-4 text-gray-400 p-1 hover:text-gray-600 transition"
           >
             {ICONS.close}
           </button>
 
-          <h2 className="text-2xl font-bold mb-6">Adicionar Transação</h2>
+          <h2 className="text-xl sm:text-2xl font-bold mb-4 sm:mb-6 pr-8">Adicionar Transação</h2>
 
           {isSalary && (
             <div className="mb-4 bg-green-50 border border-green-200 text-green-700 p-3 rounded-lg text-sm">
@@ -136,29 +136,32 @@ const AddTransactionModal: React.FC<AddTransactionModalProps> = ({
             <div>
               <label className={labelStyle}>Descrição</label>
               <input
-                className={inputStyle}
+                className={`${inputStyle} text-base sm:text-lg`}
                 value={description}
                 disabled={isSalary}
                 onChange={(e) => setDescription(e.target.value)}
+                placeholder={isSalary ? "Salário" : "Digite a descrição"}
               />
             </div>
 
             {/* Valor / Data */}
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label className={labelStyle}>Valor</label>
                 <input
                   type="number"
-                  className={inputStyle}
+                  className={`${inputStyle} text-base sm:text-lg`}
                   value={amount}
                   onChange={(e) => setAmount(e.target.value)}
+                  placeholder="0,00"
+                  step="0.01"
                 />
               </div>
               <div>
                 <label className={labelStyle}>Data</label>
                 <input
                   type="date"
-                  className={inputStyle}
+                  className={`${inputStyle} text-base sm:text-lg`}
                   value={date}
                   onChange={(e) => setDate(e.target.value)}
                 />
@@ -171,7 +174,7 @@ const AddTransactionModal: React.FC<AddTransactionModalProps> = ({
                 Categoria {isSalary && <span className="text-xs">(opcional)</span>}
               </label>
               <select
-                className={inputStyle}
+                className={`${inputStyle} text-base sm:text-lg`}
                 value={budgetId ?? ""}
                 onChange={(e) =>
                   setBudgetId(e.target.value || null)
@@ -193,11 +196,11 @@ const AddTransactionModal: React.FC<AddTransactionModalProps> = ({
             </div>
 
             {/* Conta / Método */}
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label className={labelStyle}>Conta</label>
                 <select
-                  className={inputStyle}
+                  className={`${inputStyle} text-base sm:text-lg`}
                   value={account}
                   onChange={(e) => setAccount(e.target.value)}
                 >
@@ -213,7 +216,7 @@ const AddTransactionModal: React.FC<AddTransactionModalProps> = ({
               <div>
                 <label className={labelStyle}>Método</label>
                 <select
-                  className={inputStyle}
+                  className={`${inputStyle} text-base sm:text-lg`}
                   value={method}
                   onChange={(e) => setMethod(e.target.value as PaymentMethod)}
                 >
@@ -229,7 +232,7 @@ const AddTransactionModal: React.FC<AddTransactionModalProps> = ({
             <div>
               <label className={labelStyle}>Status</label>
               <select
-                className={inputStyle}
+                className={`${inputStyle} text-base sm:text-lg`}
                 value={status}
                 onChange={(e) =>
                   setStatus(e.target.value as TransactionStatus)
@@ -240,17 +243,17 @@ const AddTransactionModal: React.FC<AddTransactionModalProps> = ({
               </select>
             </div>
 
-            <div className="flex justify-end gap-3 pt-6">
+            <div className="flex flex-col sm:flex-row justify-end gap-3 pt-4 sm:pt-6">
               <button
                 type="button"
                 onClick={onClose}
-                className="px-6 py-2 border rounded-lg"
+                className="w-full sm:w-auto px-6 py-3 sm:py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition text-base sm:text-base"
               >
                 Cancelar
               </button>
               <button
                 type="submit"
-                className="px-6 py-2 bg-emerald-600 text-white rounded-lg"
+                className="w-full sm:w-auto px-6 py-3 sm:py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition text-base sm:text-base"
               >
                 Salvar
               </button>

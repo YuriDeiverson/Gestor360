@@ -131,11 +131,11 @@ const DashboardContent: React.FC<DashboardContentProps> = ({
   }, [filteredTransactions]);
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6 sm:space-y-8">
       {/* =====================
          SUMMARY CARDS
       ===================== */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
         <SummaryCard
           title="Saldo Total"
           value={summary.balance}
@@ -178,21 +178,21 @@ const DashboardContent: React.FC<DashboardContentProps> = ({
       {/* =====================
          MAIN CONTENT
       ===================== */}
-      <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
+      <div className="grid grid-cols-1 xl:grid-cols-3 gap-6 sm:gap-8">
         {/* FLUXO DE CAIXA */}
-        <div className="xl:col-span-2 bg-white rounded-2xl p-6 shadow-sm flex flex-col min-h-[520px]">
-          <div className="flex flex-wrap items-center justify-between mb-4 gap-3">
-            <h3 className="text-lg font-medium text-gray-900">
+        <div className="xl:col-span-2 bg-white rounded-xl sm:rounded-2xl p-4 sm:p-6 shadow-sm flex flex-col min-h-[400px] sm:min-h-[520px]">
+          <div className="flex flex-col sm:flex-row sm:flex-wrap items-start sm:items-center justify-between mb-4 gap-3">
+            <h3 className="text-base sm:text-lg font-medium text-gray-900">
               Fluxo de Caixa
             </h3>
 
-            <div className="flex gap-2">
+            <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
               <div className="flex rounded-lg border border-gray-200 overflow-hidden bg-white">
                 {(["area", "line", "bar"] as ChartType[]).map((type) => (
                   <button
                     key={type}
                     onClick={() => setChartType(type)}
-                    className={`px-4 py-2 text-sm font-medium transition ${
+                    className={`flex-1 sm:flex-initial px-3 sm:px-4 py-2 text-xs sm:text-sm font-medium transition ${
                       chartType === type
                         ? "bg-emerald-600 text-white"
                         : "bg-white text-gray-600 hover:bg-gray-50"
@@ -210,7 +210,7 @@ const DashboardContent: React.FC<DashboardContentProps> = ({
               <select
                 value={validYear}
                 onChange={(e) => setSelectedYear(Number(e.target.value))}
-                className="text-sm border rounded-lg px-3 py-2"
+                className="text-xs sm:text-sm border rounded-lg px-3 py-2 w-full sm:w-auto"
               >
                 {availableYears.map((year) => (
                   <option key={year} value={year}>
@@ -230,14 +230,14 @@ const DashboardContent: React.FC<DashboardContentProps> = ({
         </div>
 
         {/* TRANSAÇÕES RECENTES */}
-        <div className="bg-white rounded-2xl p-6 shadow-sm flex flex-col">
+        <div className="bg-white rounded-xl sm:rounded-2xl p-4 sm:p-6 shadow-sm flex flex-col">
           <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-medium text-gray-900">
+            <h3 className="text-base sm:text-lg font-medium text-gray-900">
               Transações recentes
             </h3>
             <button
               onClick={() => setActivePage("transactions")}
-              className="text-sm text-emerald-600 hover:underline"
+              className="text-xs sm:text-sm text-emerald-600 hover:underline"
             >
               Ver todas
             </button>

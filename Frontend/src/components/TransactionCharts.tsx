@@ -83,7 +83,12 @@ const TransactionCharts: React.FC<TransactionChartsProps> = ({
 
   const commonProps = {
     data: chartData,
-    margin: { top: 24, right: 24, left: 32, bottom: 16 },
+    margin: { 
+      top: 16, 
+      right: 8, 
+      left: 16, 
+      bottom: 16 
+    },
   };
 
   let ChartComponent: React.ReactElement;
@@ -107,15 +112,32 @@ const TransactionCharts: React.FC<TransactionChartsProps> = ({
           vertical={false}
           stroke="#e5e7eb"
         />
-        <XAxis dataKey="month" axisLine={false} tickLine={false} />
+        <XAxis 
+          dataKey="month" 
+          axisLine={false} 
+          tickLine={false}
+          tick={{ fontSize: 12 }}
+        />
         <YAxis
-          width={80}
+          width={60}
           axisLine={false}
           tickLine={false}
           tickFormatter={(v: number) => formatCurrency(v)}
+          tick={{ fontSize: 11 }}
         />
-        <Tooltip formatter={(v: number) => formatCurrency(v)} />
-        <Legend />
+        <Tooltip 
+          formatter={(v: number) => formatCurrency(v)}
+          contentStyle={{
+            fontSize: '12px',
+            borderRadius: '8px',
+            border: '1px solid #e5e7eb'
+          }}
+        />
+        <Legend 
+          wrapperStyle={{
+            fontSize: '12px'
+          }}
+        />
         <Area
           type="monotone"
           dataKey="receita"
@@ -142,15 +164,32 @@ const TransactionCharts: React.FC<TransactionChartsProps> = ({
           vertical={false}
           stroke="#e5e7eb"
         />
-        <XAxis dataKey="month" axisLine={false} tickLine={false} />
+        <XAxis 
+          dataKey="month" 
+          axisLine={false} 
+          tickLine={false}
+          tick={{ fontSize: 12 }}
+        />
         <YAxis
-          width={80}
+          width={60}
           axisLine={false}
           tickLine={false}
           tickFormatter={(v: number) => formatCurrency(v)}
+          tick={{ fontSize: 11 }}
         />
-        <Tooltip formatter={(v: number) => formatCurrency(v)} />
-        <Legend />
+        <Tooltip 
+          formatter={(v: number) => formatCurrency(v)}
+          contentStyle={{
+            fontSize: '12px',
+            borderRadius: '8px',
+            border: '1px solid #e5e7eb'
+          }}
+        />
+        <Legend 
+          wrapperStyle={{
+            fontSize: '12px'
+          }}
+        />
         <Bar
           dataKey="receita"
           name="Receita"
@@ -173,15 +212,32 @@ const TransactionCharts: React.FC<TransactionChartsProps> = ({
           vertical={false}
           stroke="#e5e7eb"
         />
-        <XAxis dataKey="month" axisLine={false} tickLine={false} />
+        <XAxis 
+          dataKey="month" 
+          axisLine={false} 
+          tickLine={false}
+          tick={{ fontSize: 12 }}
+        />
         <YAxis
-          width={80}
+          width={60}
           axisLine={false}
           tickLine={false}
           tickFormatter={(v: number) => formatCurrency(v)}
+          tick={{ fontSize: 11 }}
         />
-        <Tooltip formatter={(v: number) => formatCurrency(v)} />
-        <Legend />
+        <Tooltip 
+          formatter={(v: number) => formatCurrency(v)}
+          contentStyle={{
+            fontSize: '12px',
+            borderRadius: '8px',
+            border: '1px solid #e5e7eb'
+          }}
+        />
+        <Legend 
+          wrapperStyle={{
+            fontSize: '12px'
+          }}
+        />
         <Line
           type="monotone"
           dataKey="receita"

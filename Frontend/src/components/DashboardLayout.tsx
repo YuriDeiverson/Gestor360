@@ -31,7 +31,8 @@ const DashboardLayout: React.FC<LayoutProps> = ({ children }) => {
       {/* MAIN */}
       <div
         className={`flex flex-col flex-1 transition-all duration-300
-          ${isSidebarCollapsed ? "lg:ml-20" : "lg:ml-72"}`}
+          ${isSidebarCollapsed ? "lg:ml-20" : "lg:ml-72"}
+          ${isSidebarOpen ? "ml-0" : ""}`}
       >
         {/* NAVBAR */}
         <Navbar
@@ -43,7 +44,11 @@ const DashboardLayout: React.FC<LayoutProps> = ({ children }) => {
         />
 
         {/* CONTEÚDO */}
-        <main className="p-4 sm:p-6 lg:p-8">{children}</main>
+        <main className="p-3 sm:p-4 lg:p-6 xl:p-8 min-h-screen">
+          <div className="max-w-7xl mx-auto">
+            {children}
+          </div>
+        </main>
       </div>
     </div>
   );
