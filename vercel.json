@@ -26,6 +26,14 @@
       "dest": "/backend/server.ts"
     },
     {
+      "src": "/assets/(.*)",
+      "dest": "/Frontend/dist/assets/$1"
+    },
+    {
+      "src": "/(.*\\.(js|css|png|jpg|jpeg|gif|svg|ico|woff|woff2|ttf|eot)$)",
+      "dest": "/Frontend/dist/$1"
+    },
+    {
       "src": "/(.*)",
       "dest": "/Frontend/dist/index.html"
     }
