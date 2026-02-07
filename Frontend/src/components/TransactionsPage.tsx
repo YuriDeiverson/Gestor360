@@ -49,7 +49,7 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({
   );
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
-  const [dateFilter, setDateFilter] = useState<"current" | "all" | "invoice">("current"); // Filtro de período
+  const [dateFilter, setDateFilter] = useState<"current" | "all" | "invoice">("all"); // Filtro de período
   const [customStartDate, setCustomStartDate] = useState("");
   const [customEndDate, setCustomEndDate] = useState("");
   const [selectedInvoiceMonth, setSelectedInvoiceMonth] = useState(""); // Mês da fatura selecionado
@@ -66,7 +66,12 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({
   const getInvoicePeriods = () => {
     const periods = new Set<string>();
     
-    cards.forEach(card => {
+    // Se um cartão está selecionado, mostrar períodos apenas para esse cartão
+    const cardsToProcess = selectedCard !== "all" 
+      ? cards.filter(card => card.id === selectedCard)
+      : cards;
+    
+    cardsToProcess.forEach(card => {
       const now = new Date();
       const currentYear = now.getFullYear();
       const currentMonth = now.getMonth();
@@ -94,7 +99,8 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({
         }
         
         const monthName = new Date(year, month, 1).toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
-        periods.add(`${monthName}|${startDate.toISOString().split('T')[0]}|${endDate.toISOString().split('T')[0]}`);
+        const cardPrefix = selectedCard !== "all" ? `${card.name} - ` : '';
+        periods.add(`${cardPrefix}${monthName}|${startDate.toISOString().split('T')[0]}|${endDate.toISOString().split('T')[0]}`);
       }
     });
     
@@ -219,7 +225,7 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({
     setFilterCategory("all");
     setFilterAccount("all");
     setFilterStatus("all");
-    setDateFilter("current");
+    setDateFilter("all");
     setCustomStartDate("");
     setCustomEndDate("");
     setSelectedInvoiceMonth("");
@@ -333,7 +339,7 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({
         <div className="flex gap-2 w-full sm:w-auto">
           <button
             onClick={() => setShowFilters(!showFilters)}
-            className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors flex-1 sm:flex-initial ${
+            className={`flex items-center justify-center gap-2 px-3 py-2 rounded-lg transition-colors flex-1 sm:flex-initial ${
               showFilters || hasActiveFilters
                 ? "bg-blue-600 text-white hover:bg-blue-700"
                 : "bg-white border border-gray-300 text-gray-700 hover:bg-gray-50"
@@ -348,8 +354,15 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({
             )}
           </button>
           <button
+            onClick={() => setIsImportModalOpen(true)}
+            className="flex items-center justify-center gap-2 px-3 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex-1 sm:flex-initial"
+          >
+            <Upload className="w-4 h-4" />
+            <span className="hidden sm:inline">Importar Fatura</span>
+          </button>
+          <button
             onClick={() => setIsModalOpen(true)}
-            className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-lg transition-colors flex-1 sm:flex-initial"
+            className="flex items-center justify-center gap-2 px-3 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg transition-colors flex-1 sm:flex-initial"
           >
             <Plus size={20} />
             <span className="hidden sm:inline">Nova Transação</span>
@@ -365,16 +378,33 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({
             <h3 className="font-medium text-gray-900 mb-3">Cartão</h3>
             <select
               value={selectedCard}
-              onChange={(e) => setSelectedCard(e.target.value)}
+              onChange={(e) => {
+                setSelectedCard(e.target.value);
+                // Se selecionou um cartão, sugerir filtro de fatura
+                if (e.target.value !== "all") {
+                  setDateFilter("invoice");
+                }
+              }}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
               <option value="all">Todos os cartões</option>
               {cards.map((card) => (
                 <option key={card.id} value={card.id}>
-                  {card.name} ({card.bank}) - Fechamento: {card.closingDay || 28}, Vencimento: {card.dueDay || 5}
+                  {card.name} ({card.bank})
                 </option>
               ))}
             </select>
+            {selectedCard !== "all" && (() => {
+              const card = cards.find(c => c.id === selectedCard);
+              if (!card) return null;
+              return (
+                <div className="mt-2 text-sm text-gray-600 bg-blue-50 p-2 rounded-lg">
+                  <div className="font-medium text-blue-900">{card.name}</div>
+                  <div>Fechamento: {card.closingDay || 28}º dia</div>
+                  <div>Vencimento: {card.dueDay || 5}º dia</div>
+                </div>
+              );
+            })()}
           </div>
 
           {/* Filtro de Período */}
@@ -436,6 +466,21 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({
                   return (
                     <div className="mt-2 text-sm text-gray-600">
                       Período: {new Date(period.startDate).toLocaleDateString('pt-BR')} até {new Date(period.endDate).toLocaleDateString('pt-BR')}
+                      {selectedCard !== "all" && (() => {
+                        const cardTransactions = filteredTransactions.filter(t => 
+                          t.account === selectedCard && 
+                          t.method === "Cartão de Crédito"
+                        );
+                        const totalInvoice = cardTransactions.reduce((sum, t) => sum + t.amount, 0);
+                        return (
+                          <div className="mt-1 font-semibold text-blue-600">
+                            Total da fatura: {totalInvoice.toLocaleString("pt-BR", {
+                              style: "currency",
+                              currency: "BRL",
+                            })}
+                          </div>
+                        );
+                      })()}
                     </div>
                   );
                 })()}
@@ -538,16 +583,9 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({
         onEditTransaction={handleEditTransaction}
         onDeleteTransaction={deleteTransaction}
         onPayInstallment={handlePayInstallment}
+        itemsPerPage={10}
       />
 
-      {/* =================== Botão de Importação =================== */}
-      <button
-        onClick={() => setIsImportModalOpen(true)}
-        className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
-      >
-        <Upload className="w-4 h-4" />
-        Importar Fatura
-      </button>
 
       {/* =================== Modais =================== */}
       <AddTransactionModal

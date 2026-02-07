@@ -110,6 +110,10 @@ export interface Card {
   currentBalance: number;
   nextDueDate?: string;
   status: "active" | "inactive" | "overdue";
+  /**
+   * ID do orçamento vinculado ao cartão para contabilizar despesas da fatura
+   */
+  budgetId?: string;
 }
 
 export interface BillImportModalProps {

@@ -131,10 +131,14 @@ const BillImportModal: React.FC<BillImportModalProps> = ({
       // Identificar banco pelo nome do arquivo
       const bankName = identifyBankFromFileName(file.name);
       
-      // Encontrar cartão correspondente
-      const card = findCardByBank(bankName);
+      // Encontrar cartão correspondente pelo banco ou usar o selecionado pelo usuário
+      const cardByBank = findCardByBank(bankName);
+      const effectiveCardId = selectedCard || (cardByBank ? cardByBank.id : "");
+      const effectiveCardName = effectiveCardId 
+        ? cards.find(c => c.id === effectiveCardId)?.name 
+        : bankName;
       
-      // Encontrar orçamento da categoria "Cartão"
+      // Encontrar orçamento da categoria "Cartão" - todas as faturas vão para este orçamento
       const budget = findBudgetByCategory("Cartão");
 
       const transactions = raw.map((t: any) => {
@@ -162,12 +166,12 @@ const BillImportModal: React.FC<BillImportModalProps> = ({
           description: t.title,
           amount: Math.abs(t.amount),
           type: isIncome ? "income" : "expense",
-          category: "Cartão", // Categoria padrão para associar ao orçamento "Cartão"
-          account: card ? card.id : (selectedCard || ""), // ID do cartão encontrado ou selecionado (opcional)
-          cardName: bankName, // Nome do banco identificado
+          category: "Cartão",
+          account: effectiveCardId,
+          cardName: effectiveCardName,
           method: "Cartão de Crédito",
-          budget_id: isIncome ? null : (budget ? budget.id : null), // Apenas despesas vão para o orçamento
-          status: isInstallment ? "pending" : "completed", // Parcelas ficam pendentes
+          budget_id: isIncome ? null : (budget ? budget.id : null),
+          status: isInstallment ? "pending" : "completed",
           installments: totalInstallments,
           currentInstallment: currentInstallment,
           totalAmount: isInstallment ? Math.abs(t.amount) * totalInstallments : Math.abs(t.amount),
@@ -230,10 +234,14 @@ const BillImportModal: React.FC<BillImportModalProps> = ({
       // Identificar banco pelo nome do arquivo
       const bankName = identifyBankFromFileName(file.name);
       
-      // Encontrar cartão correspondente
-      const card = findCardByBank(bankName);
+      // Encontrar cartão correspondente pelo banco ou usar o selecionado pelo usuário
+      const cardByBank = findCardByBank(bankName);
+      const effectiveCardId = selectedCard || (cardByBank ? cardByBank.id : "");
+      const effectiveCardName = effectiveCardId 
+        ? cards.find(c => c.id === effectiveCardId)?.name 
+        : bankName;
       
-      // Encontrar orçamento da categoria "Cartão"
+      // Encontrar orçamento da categoria "Cartão" - todas as faturas vão para este orçamento
       const budget = findBudgetByCategory("Cartão");
 
       const transactions = raw.map((t: any) => {
@@ -261,12 +269,12 @@ const BillImportModal: React.FC<BillImportModalProps> = ({
           description: t.title,
           amount: Math.abs(t.amount),
           type: isIncome ? "income" : "expense",
-          category: "Cartão", // Categoria padrão para associar ao orçamento "Cartão"
-          account: card ? card.id : (selectedCard || ""), // ID do cartão encontrado ou selecionado (opcional)
-          cardName: bankName, // Nome do banco identificado
+          category: "Cartão",
+          account: effectiveCardId,
+          cardName: effectiveCardName,
           method: "Cartão de Crédito",
-          budget_id: isIncome ? null : (budget ? budget.id : null), // Apenas despesas vão para o orçamento
-          status: isInstallment ? "pending" : "completed", // Parcelas ficam pendentes
+          budget_id: isIncome ? null : (budget ? budget.id : null),
+          status: isInstallment ? "pending" : "completed",
           installments: totalInstallments,
           currentInstallment: currentInstallment,
           totalAmount: isInstallment ? Math.abs(t.amount) * totalInstallments : Math.abs(t.amount),
