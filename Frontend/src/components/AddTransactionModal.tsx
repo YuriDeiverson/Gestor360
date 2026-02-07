@@ -63,8 +63,8 @@ const AddTransactionModal: React.FC<AddTransactionModalProps> = ({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    // ✅ Validação: categoria NÃO é obrigatória para salário
-    if (!amount || !date || !account) {
+    // ✅ Validação: conta NÃO é obrigatória para salário
+    if (!amount || !date || (!isSalary && !account)) {
       alert("Preencha os campos obrigatórios.");
       return;
     }

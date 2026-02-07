@@ -49,7 +49,8 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({
   );
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
-  const [dateFilter, setDateFilter] = useState<"current" | "all" | "invoice">("all"); // Filtro de período
+  const [dateFilter, setDateFilter] = useState<"current" | "all" | "invoice" | "month">("all");
+  const [selectedMonthYear, setSelectedMonthYear] = useState<string>(""); // Filtro de período
   const [customStartDate, setCustomStartDate] = useState("");
   const [customEndDate, setCustomEndDate] = useState("");
   const [selectedInvoiceMonth, setSelectedInvoiceMonth] = useState(""); // Mês da fatura selecionado
@@ -174,6 +175,14 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({
         return transactionDate >= startDate && transactionDate <= endDate;
       }
 
+      if (dateFilter === "month" && selectedMonthYear) {
+        const [year, month] = selectedMonthYear.split("-").map(Number);
+        const startDate = new Date(year, month, 1);
+        const endDate = new Date(year, month + 1, 0);
+        const transactionDate = new Date(t.date);
+        return transactionDate >= startDate && transactionDate <= endDate;
+      }
+
       if (dateFilter === "invoice" && selectedInvoiceMonth) {
         const { startDate, endDate } = getInvoiceDateRange(selectedInvoiceMonth);
         if (startDate && endDate) {
@@ -214,10 +223,11 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({
     filterCategory !== "all" ||
     filterAccount !== "all" ||
     filterStatus !== "all" ||
-    dateFilter === "all" ||
-    (customStartDate && customEndDate) ||
-    (dateFilter === "invoice" && selectedInvoiceMonth) ||
-    selectedCard !== "all";
+    selectedCard !== "all" ||
+    dateFilter !== "all" ||
+    selectedMonthYear !== "" ||
+    selectedInvoiceMonth !== "" ||
+    (customStartDate && customEndDate);
 
   const clearFilters = () => {
     setSearchTerm("");
@@ -230,6 +240,7 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({
     setCustomEndDate("");
     setSelectedInvoiceMonth("");
     setSelectedCard("all");
+    setSelectedMonthYear("");
   };
 
   const handleEditTransaction = (transaction: Transaction) =>
@@ -412,6 +423,31 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({
             <h3 className="font-medium text-gray-900 mb-3">Período</h3>
             <div className="flex flex-wrap gap-2">
               <button
+                onClick={() => {
+                  setDateFilter("all");
+                  setSelectedMonthYear("");
+                }}
+                className={`px-4 py-2 rounded-lg transition-colors ${
+                  dateFilter === "all" && !selectedMonthYear
+                    ? "bg-blue-600 text-white"
+                    : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                }`}
+              >
+                Todos os Meses
+              </button>
+              <button
+                onClick={() => {
+                  setDateFilter("month");
+                }}
+                className={`px-4 py-2 rounded-lg transition-colors ${
+                  dateFilter === "month"
+                    ? "bg-blue-600 text-white"
+                    : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                }`}
+              >
+                Mês Específico
+              </button>
+              <button
                 onClick={() => setDateFilter("current")}
                 className={`px-4 py-2 rounded-lg transition-colors ${
                   dateFilter === "current"
@@ -432,9 +468,12 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({
                 Fatura
               </button>
               <button
-                onClick={() => setDateFilter("all")}
+                onClick={() => {
+                  setDateFilter("all");
+                  setSelectedMonthYear("");
+                }}
                 className={`px-4 py-2 rounded-lg transition-colors ${
-                  dateFilter === "all"
+                  dateFilter === "all" && (customStartDate || customEndDate)
                     ? "bg-blue-600 text-white"
                     : "bg-gray-100 text-gray-700 hover:bg-gray-200"
                 }`}
@@ -442,6 +481,59 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({
                 Personalizado
               </button>
             </div>
+            
+            {/* Seletor de Mês/Ano */}
+            {dateFilter === "month" && (
+              <div className="mt-3">
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Selecione o Mês e Ano
+                </label>
+                <select
+                  value={selectedMonthYear}
+                  onChange={(e) => setSelectedMonthYear(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="">Selecione...</option>
+                  {(() => {
+                    // Gerar lista de meses/anos disponíveis a partir das transações
+                    const months = new Map<string, { year: number; month: number; label: string }>();
+                    
+                    transactions.forEach(t => {
+                      const date = new Date(t.date);
+                      const year = date.getFullYear();
+                      const month = date.getMonth();
+                      const key = `${year}-${month}`;
+                      const label = new Date(year, month, 1).toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
+                      months.set(key, { year, month, label });
+                    });
+                    
+                    // Adicionar meses futuros e passados para garantir opções
+                    const now = new Date();
+                    for (let i = -24; i <= 6; i++) {
+                      const d = new Date(now.getFullYear(), now.getMonth() + i, 1);
+                      const key = `${d.getFullYear()}-${d.getMonth()}`;
+                      const label = d.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
+                      if (!months.has(key)) {
+                        months.set(key, { year: d.getFullYear(), month: d.getMonth(), label });
+                      }
+                    }
+                    
+                    // Ordenar do mais recente para o mais antigo
+                    const sortedMonths = Array.from(months.entries())
+                      .sort((a, b) => {
+                        if (a[1].year !== b[1].year) return b[1].year - a[1].year;
+                        return b[1].month - a[1].month;
+                      });
+                    
+                    return sortedMonths.map(([key, { label }]) => (
+                      <option key={key} value={key}>
+                        {label.charAt(0).toUpperCase() + label.slice(1)}
+                      </option>
+                    ));
+                  })()}
+                </select>
+              </div>
+            )}
             
             {/* Filtro de Fatura */}
             {dateFilter === "invoice" && (
