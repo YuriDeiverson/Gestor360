@@ -1,8 +1,148 @@
-import { Router } from "express";
+import { Router, type Response } from "express";
 import { supabaseAdmin } from "../supabase";
 import { authMiddleware, AuthenticatedRequest } from "../middleware";
 
 const router = Router();
+
+/**
+ * POST /api/transacoes/:id/pay-installment
+ * Exportado para registro explícito em server.ts (evita 404 em alguns deploys/sub-routers).
+ */
+export async function payInstallmentHandler(
+  req: AuthenticatedRequest,
+  res: Response,
+) {
+  try {
+    const { id } = req.params;
+
+    const { data: row, error: fetchErr } = await supabaseAdmin
+      .from("transacoes")
+      .select("*")
+      .eq("id", id)
+      .single();
+
+    if (fetchErr || !row) {
+      return res.status(404).json({ error: "Transação não encontrada" });
+    }
+
+    const installments = Math.max(
+      1,
+      parseInt(String(row.installments ?? 1), 10) || 1,
+    );
+    const cur = Math.max(
+      1,
+      parseInt(String(row.currentinstallment ?? 1), 10) || 1,
+    );
+    const valorNum = Number(row.valor);
+    const totalAmt =
+      row.totalamount != null && !Number.isNaN(Number(row.totalamount))
+        ? Number(row.totalamount)
+        : valorNum * installments;
+    const remainingPrev =
+      row.remainingamount != null && !Number.isNaN(Number(row.remainingamount))
+        ? Number(row.remainingamount)
+        : Math.max(0, totalAmt - valorNum);
+
+    if (installments <= 1) {
+      return res
+        .status(400)
+        .json({ error: "Esta transação não possui parcelamento (1x)." });
+    }
+    if (row.status === "completed") {
+      return res.status(400).json({ error: "Parcelamento já quitado." });
+    }
+
+    const nextInstallment = cur + 1;
+    const isLast = nextInstallment > installments;
+    const installmentValue =
+      installments > 0 ? totalAmt / installments : valorNum;
+    const newRemaining = Math.max(0, remainingPrev - installmentValue);
+
+    let nextPaymentDate: string | null =
+      typeof row.nextpaymentdate === "string" && row.nextpaymentdate.trim()
+        ? row.nextpaymentdate.trim()
+        : null;
+
+    if (!isLast) {
+      if (nextPaymentDate) {
+        const d = new Date(nextPaymentDate + "T12:00:00");
+        d.setMonth(d.getMonth() + 1);
+        nextPaymentDate = d.toISOString().split("T")[0];
+      } else if (row.data) {
+        const d = new Date(String(row.data) + "T12:00:00");
+        d.setMonth(d.getMonth() + 1);
+        nextPaymentDate = d.toISOString().split("T")[0];
+      }
+    } else {
+      nextPaymentDate = null;
+    }
+
+    const updateData: Record<string, unknown> = {
+      currentinstallment: nextInstallment,
+      remainingamount: newRemaining,
+      status: isLast ? "completed" : "pending",
+      updated_by: req.user!.userId,
+      updated_at: new Date().toISOString(),
+    };
+    if (nextPaymentDate) {
+      updateData.nextpaymentdate = nextPaymentDate;
+    } else {
+      updateData.nextpaymentdate = null;
+    }
+
+    const { data: result, error } = await supabaseAdmin
+      .from("transacoes")
+      .update(updateData)
+      .eq("id", id)
+      .select()
+      .single();
+
+    if (error) {
+      console.error("❌ Erro ao pagar parcela:", error);
+      return res.status(500).json({
+        error: error.message || "Erro ao pagar parcela",
+      });
+    }
+
+    const methodStr =
+      typeof row.method === "string" ? row.method.trim() : "";
+    const accountStr =
+      row.account != null && String(row.account).trim()
+        ? String(row.account).trim()
+        : "";
+
+    if (
+      methodStr === "Cartão de Crédito" &&
+      accountStr &&
+      Number.isFinite(valorNum) &&
+      cur >= 2
+    ) {
+      try {
+        const { data: card } = await supabaseAdmin
+          .from("cards")
+          .select("current_balance")
+          .eq("id", accountStr)
+          .single();
+        if (card) {
+          const newBal = (card.current_balance || 0) + valorNum;
+          await supabaseAdmin
+            .from("cards")
+            .update({ current_balance: newBal })
+            .eq("id", accountStr);
+        }
+      } catch (cardErr) {
+        console.error("Erro ao atualizar cartão ao pagar parcela:", cardErr);
+      }
+    }
+
+    res.json(result);
+  } catch (err: any) {
+    console.error("❌ pay-installment:", err);
+    res.status(500).json({
+      error: err.message || "Erro ao pagar parcela",
+    });
+  }
+}
 
 /**
  * GET /transacoes
@@ -105,15 +245,54 @@ router.post("/", authMiddleware, async (req: AuthenticatedRequest, res) => {
       remainingAmount,
       nextpaymentdate,
       nextPaymentDate,
+      categoria: categoriaBody,
     } = req.body;
+
+    /** String vazia quebra FK em budget_id; null é o correto no Postgres */
+    const budgetIdNorm =
+      budget_id && String(budget_id).trim() ? String(budget_id).trim() : null;
+    const methodStr = typeof method === "string" ? method.trim() : "";
+    const accountStr =
+      account != null && String(account).trim() ? String(account).trim() : "";
+
+    const tipoRaw = String(tipo ?? "")
+      .trim()
+      .toLowerCase();
+    let tipoNorm: "receita" | "despesa";
+    if (tipoRaw === "receita" || tipoRaw === "income") {
+      tipoNorm = "receita";
+    } else if (tipoRaw === "despesa" || tipoRaw === "expense") {
+      tipoNorm = "despesa";
+    } else {
+      return res.status(400).json({
+        error: `tipo inválido (use receita ou despesa). Recebido: ${tipo}`,
+        received: tipo,
+      });
+    }
 
     // Validação com mensagens mais detalhadas
     const missingFields: string[] = [];
     if (!dashboard_id) missingFields.push("dashboard_id");
-    // budget_id é opcional para salário e transações com account (card_id)
-    if (!budget_id && method !== "Salário" && !account) missingFields.push("budget_id");
-    if (!valor && valor !== 0) missingFields.push("valor");
-    if (!tipo) missingFields.push("tipo");
+    const hasIncomeCategory =
+      typeof categoriaBody === "string" && categoriaBody.trim().length > 0;
+    // budget_id é opcional para salário, conta (cartão), ou categoria de receita explícita
+    if (
+      !budgetIdNorm &&
+      methodStr !== "Salário" &&
+      !accountStr &&
+      !hasIncomeCategory
+    ) {
+      missingFields.push("budget_id");
+    }
+    if (
+      valor === undefined ||
+      valor === null ||
+      (typeof valor === "string" && valor.trim() === "")
+    ) {
+      missingFields.push("valor");
+    }
+    if (!descricao || !String(descricao).trim()) missingFields.push("descricao");
+    if (!data) missingFields.push("data");
 
     if (missingFields.length > 0) {
       console.error("❌ Campos obrigatórios faltando:", missingFields);
@@ -122,42 +301,61 @@ router.post("/", authMiddleware, async (req: AuthenticatedRequest, res) => {
         missingFields,
         received: {
           dashboard_id: !!dashboard_id,
-          budget_id: !!budget_id,
+          budget_id: !!budgetIdNorm,
           valor,
           tipo,
+          descricao: !!descricao,
+          data: !!data,
+          method: methodStr,
         },
       });
     }
 
-    // Buscar o nome do budget para preencher a categoria (campo obrigatório)
+    // Nome da categoria no banco: budget, corpo categoria (receitas), ou legado método Salário
     let categoria = "Sem categoria";
-    if (budget_id) {
+    if (budgetIdNorm) {
       const { data: budgetData } = await supabaseAdmin
         .from("budgets")
         .select("nome")
-        .eq("id", budget_id)
+        .eq("id", budgetIdNorm)
         .single();
       categoria = budgetData?.nome || "Sem categoria";
-    } else if (method === "Salário") {
+    } else if (hasIncomeCategory) {
+      categoria = String(categoriaBody).trim();
+    } else if (methodStr === "Salário") {
       categoria = "Salário";
     }
+
+    const valorNum =
+      typeof valor === "number" ? valor : parseFloat(String(valor).replace(",", "."));
+    if (Number.isNaN(valorNum)) {
+      return res.status(400).json({ error: "valor inválido", received: valor });
+    }
+
+    const inst = installments ?? currentinstallment ?? currentInstallment;
+    const installmentsNum = inst != null && inst !== "" ? Math.max(1, parseInt(String(inst), 10) || 1) : 1;
+    const curInst = currentinstallment ?? currentInstallment;
+    const currentinstallmentNum =
+      curInst != null && curInst !== ""
+        ? Math.max(1, parseInt(String(curInst), 10) || 1)
+        : 1;
 
     // Normalizar campos de parcelamento (aceitar tanto camelCase quanto snake_case)
     const insertData: any = {
       dashboard_id,
-      descricao,
-      valor,
-      tipo, // expense | income
-      categoria, // Nome do budget (campo obrigatório no banco)
-      budget_id,
+      descricao: String(descricao).trim(),
+      valor: valorNum,
+      tipo: tipoNorm,
+      categoria, // NOT NULL no banco — CHECK (tipo IN ('receita','despesa'))
+      budget_id: budgetIdNorm,
       data,
-      method,
-      account,
-      status,
-      installments: installments || currentinstallment ? (installments || 1) : 1,
-      currentinstallment: currentinstallment || currentInstallment || 1,
-      totalamount: totalamount || totalAmount,
-      remainingamount: remainingamount || remainingAmount,
+      method: methodStr || "PIX",
+      account: accountStr || "Conta Principal",
+      status: status || "completed",
+      installments: installmentsNum,
+      currentinstallment: currentinstallmentNum,
+      totalamount: totalamount ?? totalAmount,
+      remainingamount: remainingamount ?? remainingAmount,
       nextpaymentdate: nextpaymentdate || nextPaymentDate,
       created_by: req.user!.userId,
     };
@@ -186,33 +384,37 @@ router.post("/", authMiddleware, async (req: AuthenticatedRequest, res) => {
     }
 
     // Atualizar limite do cartão se for despesa com cartão de crédito
-    if (tipo === "despesa" && method === "Cartão de Crédito" && account) {
+    if (
+      tipoNorm === "despesa" &&
+      methodStr === "Cartão de Crédito" &&
+      accountStr
+    ) {
       try {
-        console.log("💳 Atualizando limite do cartão:", account);
+        console.log("💳 Atualizando limite do cartão:", accountStr);
         
         // Buscar cartão atual
         const { data: card, error: cardError } = await supabaseAdmin
           .from("cards")
           .select("current_balance, card_limit")
-          .eq("id", account)
+          .eq("id", accountStr)
           .single();
           
         if (cardError) {
           console.error("❌ Erro ao buscar cartão:", cardError);
         } else if (card) {
           // Atualizar saldo atual (somar valor da despesa)
-          const newBalance = (card.current_balance || 0) + valor;
+          const newBalance = (card.current_balance || 0) + valorNum;
           
           const { error: updateError } = await supabaseAdmin
             .from("cards")
             .update({ current_balance: newBalance })
-            .eq("id", account);
+            .eq("id", accountStr);
             
           if (updateError) {
             console.error("❌ Erro ao atualizar limite do cartão:", updateError);
           } else {
             console.log("✅ Limite do cartão atualizado:", {
-              cardId: account,
+              cardId: accountStr,
               oldBalance: card.current_balance,
               newBalance: newBalance,
               limit: card.card_limit
@@ -260,6 +462,7 @@ router.put("/:id", authMiddleware, async (req: AuthenticatedRequest, res) => {
       remainingAmount,
       nextpaymentdate,
       nextPaymentDate,
+      categoria: categoriaBody,
     } = req.body;
 
     console.log(`📝 Atualizando transação ID: ${id}`);
@@ -274,6 +477,8 @@ router.put("/:id", authMiddleware, async (req: AuthenticatedRequest, res) => {
         .single();
 
       categoria = budgetData?.nome;
+    } else if (typeof categoriaBody === "string" && categoriaBody.trim()) {
+      categoria = categoriaBody.trim();
     }
 
     // Preparar dados de atualização
@@ -300,9 +505,9 @@ router.put("/:id", authMiddleware, async (req: AuthenticatedRequest, res) => {
       updateData.categoria = categoria;
     }
 
-    // Remover campos undefined/null
-    Object.keys(updateData).forEach(key => {
-      if (updateData[key] === undefined || updateData[key] === null) {
+    // Remover apenas undefined (mantém null para limpar budget_id no Supabase)
+    Object.keys(updateData).forEach((key) => {
+      if (updateData[key] === undefined) {
         delete updateData[key];
       }
     });

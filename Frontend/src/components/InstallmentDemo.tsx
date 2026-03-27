@@ -51,20 +51,31 @@ const InstallmentDemo: React.FC = () => {
 
   const handlePayInstallment = async (transaction: Transaction) => {
     console.log("Pagando parcela de:", transaction.description);
-    // Aqui seria feita a lógica de pagamento
     alert(`Parcela paga para: ${transaction.description}`);
   };
 
   return (
-    <div className="p-6 bg-gray-50 min-h-screen">
+    <div
+      className="p-6 min-h-screen"
+      style={{ backgroundColor: "var(--bg-secondary)" }}
+    >
       <div className="max-w-7xl mx-auto">
-        <h1 className="text-2xl font-bold text-gray-900 mb-6">
+        <h1
+          className="text-2xl font-bold mb-6"
+          style={{ color: "var(--text)" }}
+        >
           Demo - Transações Parceladas Expandíveis
         </h1>
 
-        <div className="bg-white rounded-lg p-4 mb-6">
+        <div
+          className="rounded-lg p-4 mb-6"
+          style={{ backgroundColor: "var(--card)" }}
+        >
           <h2 className="text-lg font-semibold mb-3">Funcionalidades:</h2>
-          <ul className="space-y-2 text-sm text-gray-700">
+          <ul
+            className="space-y-2 text-sm"
+            style={{ color: "var(--text)" }}
+          >
             <li>
               ✅ <strong>Expandir/Recolher:</strong> Clique no ícone de seta
               para ver detalhes das parcelas

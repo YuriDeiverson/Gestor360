@@ -25,10 +25,8 @@ const Toast: React.FC<ToastProps> = ({ toast, onRemove }) => {
   }, [onRemove, toast.id]);
 
   useEffect(() => {
-    // Animação de entrada
     setTimeout(() => setIsVisible(true), 50);
 
-    // Auto-remove após duração especificada
     const timer = setTimeout(() => {
       handleRemove();
     }, toast.duration || 4000);
@@ -37,39 +35,52 @@ const Toast: React.FC<ToastProps> = ({ toast, onRemove }) => {
   }, [handleRemove, toast.duration]);
 
   const getToastStyles = () => {
-    const baseStyles =
-      "flex items-start gap-3 p-4 rounded-xl shadow-lg border backdrop-blur-md transition-all duration-300 transform";
-
-    let typeStyles = "";
+    let bgColor = "";
+    let borderColor = "";
+    let textColor = "";
     let iconColor = "";
 
     switch (toast.type) {
       case "success":
-        typeStyles = "bg-green-50/90 border-green-200 text-green-800";
-        iconColor = "text-green-600";
+        bgColor = "var(--success-bg)";
+        borderColor = "var(--success)";
+        textColor = "var(--success)";
+        iconColor = "var(--success)";
         break;
       case "error":
-        typeStyles = "bg-red-50/90 border-red-200 text-red-800";
-        iconColor = "text-red-600";
+        bgColor = "var(--danger-bg)";
+        borderColor = "var(--danger)";
+        textColor = "var(--danger)";
+        iconColor = "var(--danger)";
         break;
       case "warning":
-        typeStyles = "bg-yellow-50/90 border-yellow-200 text-yellow-800";
-        iconColor = "text-yellow-600";
+        bgColor = "var(--warning-bg)";
+        borderColor = "var(--warning)";
+        textColor = "var(--warning)";
+        iconColor = "var(--warning)";
         break;
       case "info":
-        typeStyles = "bg-blue-50/90 border-blue-200 text-blue-800";
-        iconColor = "text-blue-600";
+        bgColor = "var(--primary-bg)";
+        borderColor = "var(--primary)";
+        textColor = "var(--primary)";
+        iconColor = "var(--primary)";
         break;
     }
 
-    const animationStyles = isLeaving
+    const animationClasses = isLeaving
       ? "opacity-0 translate-x-full scale-95"
       : isVisible
       ? "opacity-100 translate-x-0 scale-100"
       : "opacity-0 translate-x-full scale-95";
 
     return {
-      baseStyles: `${baseStyles} ${typeStyles} ${animationStyles}`,
+      className: `flex items-start gap-3 p-4 rounded-xl border backdrop-blur-md transition-all duration-300 transform ${animationClasses}`,
+      style: {
+        backgroundColor: bgColor,
+        borderColor,
+        color: textColor,
+        boxShadow: "var(--shadow)",
+      } as React.CSSProperties,
       iconColor,
     };
   };
@@ -135,11 +146,11 @@ const Toast: React.FC<ToastProps> = ({ toast, onRemove }) => {
     }
   };
 
-  const { baseStyles, iconColor } = getToastStyles();
+  const { className, style, iconColor } = getToastStyles();
 
   return (
-    <div className={baseStyles}>
-      <div className={iconColor}>{getIcon()}</div>
+    <div className={className} style={style}>
+      <div style={{ color: iconColor }}>{getIcon()}</div>
 
       <div className="flex-1 min-w-0">
         <p className="text-sm font-semibold leading-5">{toast.title}</p>

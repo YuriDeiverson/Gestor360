@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { GoalNotification as GoalNotificationType } from '../hooks/useGoalNotifications';
 
 interface GoalNotificationProps {
@@ -10,24 +10,50 @@ const GoalNotificationComponent: React.FC<GoalNotificationProps> = ({
   notification,
   onClose,
 }) => {
-  const getNotificationStyles = (status: string) => {
+  const [closeHovered, setCloseHovered] = useState(false);
+
+  const getNotificationStyles = (status: string): React.CSSProperties => {
     switch (status) {
       case 'completed':
-        return 'bg-gradient-to-r from-green-50 to-emerald-50 border-green-200 text-green-800';
+        return {
+          background: `linear-gradient(to right, var(--success-bg), var(--success-bg))`,
+          borderColor: 'var(--success)',
+          color: 'var(--success)',
+        };
       case 'paused':
-        return 'bg-gradient-to-r from-yellow-50 to-amber-50 border-yellow-200 text-yellow-800';
+        return {
+          background: `linear-gradient(to right, var(--warning-bg), var(--warning-bg))`,
+          borderColor: 'var(--warning)',
+          color: 'var(--warning)',
+        };
       case 'active':
-        return 'bg-gradient-to-r from-blue-50 to-sky-50 border-blue-200 text-blue-800';
+        return {
+          background: `linear-gradient(to right, var(--primary-bg), var(--primary-bg))`,
+          borderColor: 'var(--primary)',
+          color: 'var(--primary)',
+        };
       default:
-        return 'bg-gray-50 border-gray-200 text-gray-800';
+        return {
+          backgroundColor: 'var(--bg-secondary)',
+          borderColor: 'var(--border)',
+          color: 'var(--text)',
+        };
     }
   };
 
   return (
-    <div className={`p-4 rounded-lg border ${getNotificationStyles(notification.status)} relative animate-pulse`}>
+    <div
+      className="p-4 rounded-lg border relative animate-pulse"
+      style={getNotificationStyles(notification.status)}
+    >
       <button
         onClick={onClose}
-        className="absolute top-2 right-2 text-gray-400 hover:text-gray-600 transition-colors"
+        onMouseEnter={() => setCloseHovered(true)}
+        onMouseLeave={() => setCloseHovered(false)}
+        className="absolute top-2 right-2 transition-colors"
+        style={{
+          color: closeHovered ? 'var(--text-secondary)' : 'var(--text-muted)',
+        }}
         aria-label="Fechar notificação"
       >
         ✕

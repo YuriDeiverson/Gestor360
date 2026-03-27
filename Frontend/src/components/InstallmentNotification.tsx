@@ -10,6 +10,7 @@ const InstallmentNotification: React.FC<InstallmentNotificationProps> = ({
   onClose,
 }) => {
   const [isVisible, setIsVisible] = useState(true);
+  const [closeHovered, setCloseHovered] = useState(false);
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -26,7 +27,13 @@ const InstallmentNotification: React.FC<InstallmentNotificationProps> = ({
         isVisible ? "translate-x-0 opacity-100" : "translate-x-full opacity-0"
       }`}
     >
-      <div className="bg-blue-600 text-white px-4 py-3 rounded-lg shadow-lg max-w-sm">
+      <div
+        className="text-white px-4 py-3 rounded-lg max-w-sm"
+        style={{
+          backgroundColor: "var(--primary)",
+          boxShadow: "var(--shadow)",
+        }}
+      >
         <div className="flex items-center space-x-3">
           <div className="flex-shrink-0">
             <svg
@@ -45,11 +52,21 @@ const InstallmentNotification: React.FC<InstallmentNotificationProps> = ({
           </div>
           <div className="flex-1">
             <p className="text-sm font-medium">Parcela Atualizada</p>
-            <p className="text-xs text-blue-100">{message}</p>
+            <p
+              className="text-xs"
+              style={{ color: "var(--primary-light)" }}
+            >
+              {message}
+            </p>
           </div>
           <button
             onClick={() => setIsVisible(false)}
-            className="flex-shrink-0 text-blue-200 hover:text-white"
+            onMouseEnter={() => setCloseHovered(true)}
+            onMouseLeave={() => setCloseHovered(false)}
+            className="flex-shrink-0"
+            style={{
+              color: closeHovered ? "white" : "rgba(255,255,255,0.7)",
+            }}
           >
             <svg
               className="w-4 h-4"

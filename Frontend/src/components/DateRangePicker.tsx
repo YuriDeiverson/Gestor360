@@ -19,15 +19,13 @@ const DateRangePicker: React.FC<DateRangePickerProps> = ({
 }) => {
   const [tempStartDate, setTempStartDate] = useState(startDate);
   const [tempEndDate, setTempEndDate] = useState(endDate);
+  const [hoveredEl, setHoveredEl] = useState<string | null>(null);
 
-  // Inicializar currentMonth com a data de início dos dados
   const getInitialMonth = () => {
     try {
-      // Se as datas estão resetadas (dados totais), usar data atual
       if (startDate === "1900-01-01" || !startDate) {
         return new Date();
       }
-      // Caso contrário, usar a data de início dos dados
       return new Date(startDate);
     } catch {
       return new Date();
@@ -44,6 +42,11 @@ const DateRangePicker: React.FC<DateRangePickerProps> = ({
     top: number;
     width: number;
   } | null>(null);
+
+  const hoverProps = (id: string) => ({
+    onMouseEnter: () => setHoveredEl(id),
+    onMouseLeave: () => setHoveredEl(null),
+  });
 
   useEffect(() => {
     if (isOpen && buttonRef.current) {
@@ -73,14 +76,13 @@ const DateRangePicker: React.FC<DateRangePickerProps> = ({
     };
   }, [isOpen]);
 
-  // Atualizar currentMonth quando startDate mudar (ex: novos dados carregados)
   useEffect(() => {
     try {
       if (startDate !== "1900-01-01" && startDate) {
         setCurrentMonth(new Date(startDate));
       }
     } catch {
-      // Se houver erro na data, manter o currentMonth atual
+      // keep current
     }
   }, [startDate]);
 
@@ -90,22 +92,17 @@ const DateRangePicker: React.FC<DateRangePickerProps> = ({
     const onDocClick = (ev: MouseEvent) => {
       const target = ev.target as Element;
 
-      // Se clicou no botão, deixar o botão lidar com isso
       if (buttonRef.current && buttonRef.current.contains(target)) return;
 
-      // Se clicou dentro do dropdown (incluindo elementos portalizados)
       if (dropdownRef.current) {
         if (dropdownRef.current.contains(target)) return;
-        // Verifica se é um elemento filho do dropdown via data attribute
         if (target.closest && target.closest("[data-calendar-dropdown]"))
           return;
       }
 
-      // Se chegou até aqui, clicou fora - fechar
       onToggle();
     };
 
-    // Usar mousedown em vez de click para capturar antes
     document.addEventListener("mousedown", onDocClick, false);
 
     return () => {
@@ -114,7 +111,6 @@ const DateRangePicker: React.FC<DateRangePickerProps> = ({
   }, [isOpen, onToggle]);
 
   const formatDisplayDate = (date: string) => {
-    // Se a data está resetada (datas muito amplas), mostrar texto especial
     if (date === "1900-01-01") return "Início";
     if (date === "2099-12-31") return "Fim";
 
@@ -139,12 +135,10 @@ const DateRangePicker: React.FC<DateRangePickerProps> = ({
 
     const days = [];
 
-    // Dias vazios no início
     for (let i = 0; i < startingDayOfWeek; i++) {
       days.push(null);
     }
 
-    // Dias do mês
     for (let day = 1; day <= daysInMonth; day++) {
       days.push(new Date(year, month, day));
     }
@@ -163,12 +157,10 @@ const DateRangePicker: React.FC<DateRangePickerProps> = ({
     if (selectingStart) {
       setTempStartDate(dateStr);
       setSelectingStart(false);
-      // Se a data de início for posterior à de fim, ajusta a data de fim
       if (new Date(dateStr) > new Date(tempEndDate)) {
         setTempEndDate(dateStr);
       }
     } else {
-      // Se a data de fim for anterior à de início, ajusta a data de início
       if (new Date(dateStr) < new Date(tempStartDate)) {
         setTempStartDate(dateStr);
         setTempEndDate(dateStr);
@@ -192,10 +184,8 @@ const DateRangePicker: React.FC<DateRangePickerProps> = ({
   };
 
   const handleReset = () => {
-    // Limpar completamente os filtros de data - sem restrições
-    // Usar datas muito amplas para mostrar todos os dados
-    const startDate = "1900-01-01"; // Data muito antiga
-    const endDate = "2099-12-31"; // Data muito futura
+    const startDate = "1900-01-01";
+    const endDate = "2099-12-31";
 
     setTempStartDate(startDate);
     setTempEndDate(endDate);
@@ -233,6 +223,32 @@ const DateRangePicker: React.FC<DateRangePickerProps> = ({
 
   const weekDays = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
 
+  const getDayStyle = (
+    date: Date,
+    monthOffset: number,
+    index: number,
+  ): React.CSSProperties => {
+    if (isDateSelected(date)) {
+      return {
+        backgroundColor: "var(--primary)",
+        color: "white",
+        fontWeight: 600,
+      };
+    }
+    if (isDateInRange(date)) {
+      return {
+        backgroundColor: "var(--primary-bg)",
+        color: "var(--primary)",
+      };
+    }
+    const dayKey = `day-${monthOffset}-${index}`;
+    return {
+      backgroundColor:
+        hoveredEl === dayKey ? "var(--bg-secondary)" : "transparent",
+      color: "var(--text)",
+    };
+  };
+
   const renderCalendar = (monthOffset: number = 0) => {
     const displayMonth = new Date(currentMonth);
     displayMonth.setMonth(displayMonth.getMonth() + monthOffset);
@@ -251,12 +267,23 @@ const DateRangePicker: React.FC<DateRangePickerProps> = ({
                 setCurrentMonth(prev);
               }}
               onMouseDown={(e) => e.stopPropagation()}
-              className="p-1 hover:bg-gray-100 rounded"
+              {...hoverProps("nav-prev")}
+              className="p-1 rounded transition-colors"
+              style={{
+                backgroundColor:
+                  hoveredEl === "nav-prev"
+                    ? "var(--bg-secondary)"
+                    : "transparent",
+                color: "var(--text)",
+              }}
             >
               ←
             </button>
           )}
-          <h3 className="font-semibold text-sm">
+          <h3
+            className="font-semibold text-sm"
+            style={{ color: "var(--text)" }}
+          >
             {monthNames[displayMonth.getMonth()]} {displayMonth.getFullYear()}
           </h3>
           {monthOffset === 1 && (
@@ -269,7 +296,15 @@ const DateRangePicker: React.FC<DateRangePickerProps> = ({
                 setCurrentMonth(next);
               }}
               onMouseDown={(e) => e.stopPropagation()}
-              className="p-1 hover:bg-gray-100 rounded"
+              {...hoverProps("nav-next")}
+              className="p-1 rounded transition-colors"
+              style={{
+                backgroundColor:
+                  hoveredEl === "nav-next"
+                    ? "var(--bg-secondary)"
+                    : "transparent",
+                color: "var(--text)",
+              }}
             >
               →
             </button>
@@ -282,7 +317,8 @@ const DateRangePicker: React.FC<DateRangePickerProps> = ({
           {weekDays.map((day) => (
             <div
               key={day}
-              className="text-xs font-medium text-gray-500 text-center p-2"
+              className="text-xs font-medium text-center p-2"
+              style={{ color: "var(--text-secondary)" }}
             >
               {day}
             </div>
@@ -297,16 +333,9 @@ const DateRangePicker: React.FC<DateRangePickerProps> = ({
                   type="button"
                   onClick={(e) => handleDateClick(date, e)}
                   onMouseDown={(e) => e.stopPropagation()}
-                  className={`
-                    w-full h-full text-xs rounded-md transition-all
-                    ${
-                      isDateSelected(date)
-                        ? "bg-emerald-500 text-white font-semibold"
-                        : isDateInRange(date)
-                        ? "bg-emerald-100 text-emerald-700"
-                        : "hover:bg-gray-100 text-gray-700"
-                    }
-                  `}
+                  {...hoverProps(`day-${monthOffset}-${index}`)}
+                  className="w-full h-full text-xs rounded-md transition-all"
+                  style={getDayStyle(date, monthOffset, index)}
                 >
                   {date.getDate()}
                 </button>
@@ -322,22 +351,34 @@ const DateRangePicker: React.FC<DateRangePickerProps> = ({
     <div
       ref={dropdownRef}
       data-calendar-dropdown="true"
-      className="dropdown-filters bg-white rounded-xl border border-gray-200 shadow-lg"
+      className="dropdown-filters rounded-xl"
       style={{
         left: coords?.left ?? 0,
         top: coords?.top ?? 0,
         width: "auto",
+        backgroundColor: "var(--card)",
+        border: "1px solid var(--border)",
+        boxShadow: "var(--shadow)",
       }}
       onMouseDown={(e) => e.stopPropagation()}
       onClick={(e) => e.stopPropagation()}
     >
-      <div className="p-3 sm:p-4 border-b border-gray-100">
-        <div className="text-xs sm:text-sm text-gray-600 mb-2">
+      <div
+        className="p-3 sm:p-4"
+        style={{ borderBottom: "1px solid var(--border-light)" }}
+      >
+        <div
+          className="text-xs sm:text-sm mb-2"
+          style={{ color: "var(--text-secondary)" }}
+        >
           {selectingStart
             ? "Selecione a data de início"
             : "Selecione a data de fim"}
         </div>
-        <div className="flex flex-col sm:flex-row gap-2 sm:gap-4 text-xs sm:text-sm">
+        <div
+          className="flex flex-col sm:flex-row gap-2 sm:gap-4 text-xs sm:text-sm"
+          style={{ color: "var(--text)" }}
+        >
           <div>
             <span className="font-medium">Início:</span>{" "}
             {formatDisplayDate(tempStartDate)}
@@ -351,15 +392,29 @@ const DateRangePicker: React.FC<DateRangePickerProps> = ({
 
       <div className="flex flex-col sm:flex-row">
         {renderCalendar(0)}
-        <div className="border-l-0 sm:border-l border-t sm:border-t-0 border-gray-200"></div>
+        <div
+          className="border-l-0 sm:border-l border-t sm:border-t-0"
+          style={{ borderColor: "var(--border)" }}
+        ></div>
         {renderCalendar(1)}
       </div>
 
-      <div className="flex flex-col sm:flex-row justify-between p-3 sm:p-4 border-t border-gray-100 gap-3 sm:gap-0">
+      <div
+        className="flex flex-col sm:flex-row justify-between p-3 sm:p-4 gap-3 sm:gap-0"
+        style={{ borderTop: "1px solid var(--border-light)" }}
+      >
         <button
           type="button"
           onClick={handleCancel}
-          className="w-full sm:w-auto px-4 py-2 text-sm text-gray-600 hover:bg-gray-100 rounded-lg transition-colors touch-manipulation min-h-[44px] sm:min-h-[36px] order-2 sm:order-1"
+          {...hoverProps("cancel-btn")}
+          className="w-full sm:w-auto px-4 py-2 text-sm rounded-lg transition-colors touch-manipulation min-h-[44px] sm:min-h-[36px] order-2 sm:order-1"
+          style={{
+            color: "var(--text-secondary)",
+            backgroundColor:
+              hoveredEl === "cancel-btn"
+                ? "var(--bg-secondary)"
+                : "transparent",
+          }}
         >
           Cancelar
         </button>
@@ -367,14 +422,29 @@ const DateRangePicker: React.FC<DateRangePickerProps> = ({
           <button
             type="button"
             onClick={handleReset}
-            className="flex-1 sm:flex-none px-4 py-2 text-sm text-orange-600 hover:bg-orange-50 border border-orange-200 rounded-lg transition-colors touch-manipulation min-h-[44px] sm:min-h-[36px]"
+            {...hoverProps("reset-btn")}
+            className="flex-1 sm:flex-none px-4 py-2 text-sm rounded-lg transition-colors touch-manipulation min-h-[44px] sm:min-h-[36px]"
+            style={{
+              color: "var(--warning)",
+              border: "1px solid var(--warning)",
+              backgroundColor:
+                hoveredEl === "reset-btn"
+                  ? "var(--warning-bg)"
+                  : "transparent",
+            }}
           >
             Resetar
           </button>
           <button
             type="button"
             onClick={handleApply}
-            className="flex-1 sm:flex-none px-4 py-2 text-sm bg-emerald-500 text-white rounded-lg hover:bg-emerald-600 transition-colors touch-manipulation min-h-[44px] sm:min-h-[36px]"
+            {...hoverProps("apply-btn")}
+            className="flex-1 sm:flex-none px-4 py-2 text-sm text-white rounded-lg transition-colors touch-manipulation min-h-[44px] sm:min-h-[36px]"
+            style={{
+              backgroundColor: "var(--primary)",
+              filter:
+                hoveredEl === "apply-btn" ? "brightness(0.9)" : "none",
+            }}
           >
             Aplicar
           </button>
@@ -389,7 +459,16 @@ const DateRangePicker: React.FC<DateRangePickerProps> = ({
         ref={buttonRef}
         type="button"
         onClick={onToggle}
-        className="w-full text-left bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-700 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-emerald-300 cursor-pointer flex items-center justify-between touch-manipulation min-h-[44px] sm:min-h-[36px]"
+        {...hoverProps("trigger-btn")}
+        className="w-full text-left rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 cursor-pointer flex items-center justify-between touch-manipulation min-h-[44px] sm:min-h-[36px] transition-colors"
+        style={{
+          backgroundColor:
+            hoveredEl === "trigger-btn"
+              ? "var(--card)"
+              : "var(--bg-secondary)",
+          border: "1px solid var(--border)",
+          color: "var(--text)",
+        }}
       >
         <span className="truncate pr-2">
           {startDate === "1900-01-01" && endDate === "2099-12-31"

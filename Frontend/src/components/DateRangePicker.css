@@ -22,14 +22,14 @@
 }
 
 .rdrDateDisplayItem {
-  background: #f9fafb;
-  border: 1px solid #e5e7eb;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
   border-radius: 0.5rem;
-  color: #374151;
+  color: var(--text);
 }
 
 .rdrDateDisplayItemActive {
-  background: #10b981;
+  background: var(--primary);
   color: white;
 }
 
@@ -40,11 +40,11 @@
 }
 
 .rdrMonthAndYearPickers select {
-  background: #f9fafb;
-  border: 1px solid #e5e7eb;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
   border-radius: 0.375rem;
   padding: 0.25rem 0.5rem;
-  color: #374151;
+  color: var(--text);
 }
 
 .rdrMonthPicker,
@@ -57,7 +57,7 @@
 }
 
 .rdrWeekDay {
-  color: #6b7280;
+  color: var(--text-muted);
   font-weight: 500;
   font-size: 0.875rem;
 }
@@ -68,19 +68,19 @@
 
 .rdrDay {
   background: transparent;
-  color: #374151;
+  color: var(--text);
   border-radius: 0.375rem;
   margin: 1px;
 }
 
 .rdrDay:not(.rdrDayPassive):hover .rdrDayNumber span {
-  background: #f3f4f6;
-  color: #374151;
+  background: var(--bg-secondary);
+  color: var(--text);
 }
 
 .rdrDayToday .rdrDayNumber span {
-  background: #dbeafe;
-  color: #1d4ed8;
+  background: var(--primary-bg);
+  color: var(--primary);
   font-weight: 600;
 }
 
@@ -95,34 +95,34 @@
 .rdrInRange .rdrDayNumber span,
 .rdrStartEdge .rdrDayNumber span,
 .rdrEndEdge .rdrDayNumber span {
-  background: #10b981 !important;
+  background: var(--primary) !important;
   color: white !important;
 }
 
 .rdrDayPassive .rdrDayNumber span {
-  color: #d1d5db;
+  color: var(--text-muted);
 }
 
 .rdrNextPrevButton {
-  background: #f9fafb;
-  border: 1px solid #e5e7eb;
-  color: #6b7280;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  color: var(--text-muted);
   border-radius: 0.375rem;
 }
 
 .rdrNextPrevButton:hover {
-  background: #f3f4f6;
-  color: #374151;
+  background: var(--bg-secondary);
+  color: var(--text);
 }
 
 .rdrPprevButton i,
 .rdrNextButton i {
-  border-color: transparent #6b7280;
+  border-color: transparent var(--text-muted);
   border-width: 4px 6px;
 }
 
 .rdrNextPrevButton:hover i {
-  border-color: transparent #374151;
+  border-color: transparent var(--text);
 }
 
 /* Ajustes para responsividade */

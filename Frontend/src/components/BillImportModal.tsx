@@ -33,7 +33,7 @@ const BillImportModal: React.FC<BillImportModalProps> = ({
   onImportTransactions,
 }) => {
   const [currentStep, setCurrentStep] = useState(1);
-  const [selectedCard, setSelectedCard] = useState(""); // Vazio = opcional
+  const [selectedCard, setSelectedCard] = useState("");
   const [importSteps, setImportSteps] = useState<ImportStep[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
@@ -47,7 +47,6 @@ const BillImportModal: React.FC<BillImportModalProps> = ({
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
-  // Função para identificar o banco pelo nome do arquivo
   const identifyBankFromFileName = (fileName: string): string => {
     const name = fileName.toLowerCase();
     
@@ -62,10 +61,9 @@ const BillImportModal: React.FC<BillImportModalProps> = ({
     if (name.includes('c6')) return 'C6 Bank';
     if (name.includes('picpay')) return 'PicPay';
     
-    return 'Cartão'; // Padrão se não identificar
+    return 'Cartão';
   };
 
-  // Função para encontrar o cartão correspondente pelo banco
   const findCardByBank = (bankName: string) => {
     return cards.find(card => 
       card.bank && 
@@ -73,12 +71,11 @@ const BillImportModal: React.FC<BillImportModalProps> = ({
     );
   };
 
-  // Função para encontrar o orçamento correspondente
   const findBudgetByCategory = (category: string) => {
     return budgets.find(budget => 
       budget.name && 
       (budget.name.toLowerCase() === category.toLowerCase() || 
-       budget.name.toLowerCase() === `${category.toLowerCase()} `) // Tenta com ou sem espaço
+       budget.name.toLowerCase() === `${category.toLowerCase()} `)
     );
   };
 
@@ -87,7 +84,6 @@ const BillImportModal: React.FC<BillImportModalProps> = ({
     onClose();
   };
 
-  /* ================= CSV ================= */
   const parseCSV = (content: string): any[] => {
     const lines = content.split("\n").filter(Boolean);
     const headers = lines[0].split(",").map(h => h.trim());
@@ -119,6 +115,51 @@ const BillImportModal: React.FC<BillImportModalProps> = ({
     }
   };
 
+  const processTransactions = (raw: any[], file: File) => {
+    const bankName = identifyBankFromFileName(file.name);
+    const cardByBank = findCardByBank(bankName);
+    const effectiveCardId = selectedCard || (cardByBank ? cardByBank.id : "");
+    const effectiveCardName = effectiveCardId 
+      ? cards.find(c => c.id === effectiveCardId)?.name 
+      : bankName;
+    const budget = findBudgetByCategory("Cartão");
+
+    return raw.map((t: any) => {
+      const isIncome = t.amount < 0;
+      const isInstallment = t.title && (
+        t.title.toLowerCase().includes('parcela') || 
+        t.title.toLowerCase().includes('/')
+      );
+      
+      let currentInstallment = 1;
+      let totalInstallments = 1;
+      if (isInstallment) {
+        const match = t.title.match(/(\d+)\/(\d+)/);
+        if (match) {
+          currentInstallment = parseInt(match[1]);
+          totalInstallments = parseInt(match[2]);
+        }
+      }
+
+      return {
+        date: t.date,
+        description: t.title,
+        amount: Math.abs(t.amount),
+        type: isIncome ? "income" : "expense",
+        category: "Cartão",
+        account: effectiveCardId,
+        cardName: effectiveCardName,
+        method: "Cartão de Crédito",
+        budgetId: isIncome ? null : (budget ? budget.id : null),
+        status: isInstallment ? "pending" : "completed",
+        installments: totalInstallments,
+        currentInstallment: currentInstallment,
+        totalAmount: isInstallment ? Math.abs(t.amount) * totalInstallments : Math.abs(t.amount),
+        remainingAmount: isInstallment ? Math.abs(t.amount) * (totalInstallments - currentInstallment) : 0,
+      };
+    });
+  };
+
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -127,59 +168,7 @@ const BillImportModal: React.FC<BillImportModalProps> = ({
 
     try {
       const raw = await processFile(file);
-
-      // Identificar banco pelo nome do arquivo
-      const bankName = identifyBankFromFileName(file.name);
-      
-      // Encontrar cartão correspondente pelo banco ou usar o selecionado pelo usuário
-      const cardByBank = findCardByBank(bankName);
-      const effectiveCardId = selectedCard || (cardByBank ? cardByBank.id : "");
-      const effectiveCardName = effectiveCardId 
-        ? cards.find(c => c.id === effectiveCardId)?.name 
-        : bankName;
-      
-      // Encontrar orçamento da categoria "Cartão" - todas as faturas vão para este orçamento
-      const budget = findBudgetByCategory("Cartão");
-
-      const transactions = raw.map((t: any) => {
-        const isIncome = t.amount < 0;
-        
-        // Verificar se é parcelado pelo título
-        const isInstallment = t.title && (
-          t.title.toLowerCase().includes('parcela') || 
-          t.title.toLowerCase().includes('/')
-        );
-        
-        // Extrair número da parcela se existir
-        let currentInstallment = 1;
-        let totalInstallments = 1;
-        if (isInstallment) {
-          const match = t.title.match(/(\d+)\/(\d+)/);
-          if (match) {
-            currentInstallment = parseInt(match[1]);
-            totalInstallments = parseInt(match[2]);
-          }
-        }
-
-        const transaction = {
-          date: t.date,
-          description: t.title,
-          amount: Math.abs(t.amount),
-          type: isIncome ? "income" : "expense",
-          category: "Cartão",
-          account: effectiveCardId,
-          cardName: effectiveCardName,
-          method: "Cartão de Crédito",
-          budgetId: isIncome ? null : (budget ? budget.id : null),
-          status: isInstallment ? "pending" : "completed",
-          installments: totalInstallments,
-          currentInstallment: currentInstallment,
-          totalAmount: isInstallment ? Math.abs(t.amount) * totalInstallments : Math.abs(t.amount),
-          remainingAmount: isInstallment ? Math.abs(t.amount) * (totalInstallments - currentInstallment) : 0,
-        };
-        
-        return transaction;
-      });
+      const transactions = processTransactions(raw, file);
 
       setImportSteps([
         {
@@ -226,63 +215,10 @@ const BillImportModal: React.FC<BillImportModalProps> = ({
       return;
     }
 
-    // Processar o arquivo diretamente
     setIsProcessing(true);
     try {
       const raw = await processFile(file);
-
-      // Identificar banco pelo nome do arquivo
-      const bankName = identifyBankFromFileName(file.name);
-      
-      // Encontrar cartão correspondente pelo banco ou usar o selecionado pelo usuário
-      const cardByBank = findCardByBank(bankName);
-      const effectiveCardId = selectedCard || (cardByBank ? cardByBank.id : "");
-      const effectiveCardName = effectiveCardId 
-        ? cards.find(c => c.id === effectiveCardId)?.name 
-        : bankName;
-      
-      // Encontrar orçamento da categoria "Cartão" - todas as faturas vão para este orçamento
-      const budget = findBudgetByCategory("Cartão");
-
-      const transactions = raw.map((t: any) => {
-        const isIncome = t.amount < 0;
-        
-        // Verificar se é parcelado pelo título
-        const isInstallment = t.title && (
-          t.title.toLowerCase().includes('parcela') || 
-          t.title.toLowerCase().includes('/')
-        );
-        
-        // Extrair número da parcela se existir
-        let currentInstallment = 1;
-        let totalInstallments = 1;
-        if (isInstallment) {
-          const match = t.title.match(/(\d+)\/(\d+)/);
-          if (match) {
-            currentInstallment = parseInt(match[1]);
-            totalInstallments = parseInt(match[2]);
-          }
-        }
-
-        const transaction = {
-          date: t.date,
-          description: t.title,
-          amount: Math.abs(t.amount),
-          type: isIncome ? "income" : "expense",
-          category: "Cartão",
-          account: effectiveCardId,
-          cardName: effectiveCardName,
-          method: "Cartão de Crédito",
-          budgetId: isIncome ? null : (budget ? budget.id : null),
-          status: isInstallment ? "pending" : "completed",
-          installments: totalInstallments,
-          currentInstallment: currentInstallment,
-          totalAmount: isInstallment ? Math.abs(t.amount) * totalInstallments : Math.abs(t.amount),
-          remainingAmount: isInstallment ? Math.abs(t.amount) * (totalInstallments - currentInstallment) : 0,
-        };
-        
-        return transaction;
-      });
+      const transactions = processTransactions(raw, file);
 
       setImportSteps([
         {
@@ -314,15 +250,20 @@ const BillImportModal: React.FC<BillImportModalProps> = ({
   return (
     <Portal>
       <div 
-        className="fixed inset-0 bg-black/60 flex items-center justify-center z-50"
+        className="fixed inset-0 flex items-center justify-center z-50"
+        style={{ backgroundColor: 'var(--overlay)' }}
         onClick={closeModal}
       >
         <div 
-          className="bg-white w-full max-w-4xl rounded-2xl shadow-xl overflow-hidden"
+          className="w-full max-w-4xl rounded-2xl overflow-hidden"
+          style={{ backgroundColor: 'var(--card)', boxShadow: 'var(--shadow)' }}
           onClick={(e) => e.stopPropagation()}
         >
           {/* Header */}
-          <div className="p-6 border-b bg-gradient-to-r from-blue-600 to-blue-500 text-white flex justify-between items-center">
+          <div
+            className="p-6 text-white flex justify-between items-center"
+            style={{ borderBottom: '1px solid var(--border)', background: 'linear-gradient(to right, var(--gradient-start), var(--gradient-end))' }}
+          >
             <div>
               <h2 className="text-2xl font-bold">Importar fatura</h2>
               <p className="text-sm opacity-90">
@@ -331,14 +272,16 @@ const BillImportModal: React.FC<BillImportModalProps> = ({
             </div>
             <button 
               onClick={closeModal}
-              className="text-white hover:bg-white/20 p-2 rounded-lg transition"
+              className="text-white p-2 rounded-lg transition"
+              onMouseEnter={e => { e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.2)'; }}
+              onMouseLeave={e => { e.currentTarget.style.backgroundColor = ''; }}
             >
               <X size={24} />
             </button>
           </div>
 
           {/* Steps */}
-          <div className="flex gap-6 px-6 py-4 border-b text-sm">
+          <div className="flex gap-6 px-6 py-4 text-sm" style={{ borderBottom: '1px solid var(--border)' }}>
             <Step active={currentStep >= 1} label="Selecionar cartão" />
             <Step active={currentStep >= 2} label="Revisar transações" />
           </div>
@@ -348,53 +291,60 @@ const BillImportModal: React.FC<BillImportModalProps> = ({
             {/* STEP 1 */}
             {currentStep === 1 && (
               <div className="space-y-6">
-                <h3 className="font-semibold flex items-center gap-2">
+                <h3 className="font-semibold flex items-center gap-2" style={{ color: 'var(--text)' }}>
                   <CreditCard size={18} /> Cartão
                 </h3>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {/* Opção para nenhum cartão */}
                   <div
                     onClick={() => setSelectedCard("")}
-                    className={`p-4 rounded-xl border cursor-pointer transition ${
-                      selectedCard === ""
-                        ? "border-gray-500 bg-gray-50 ring-2 ring-gray-200"
-                        : "border-gray-200 hover:border-gray-400"
-                    }`}
+                    className="p-4 rounded-xl cursor-pointer transition"
+                    style={{
+                      border: selectedCard === ""
+                        ? '2px solid var(--text-secondary)'
+                        : '1px solid var(--border)',
+                      backgroundColor: selectedCard === "" ? 'var(--bg-secondary)' : 'var(--card)',
+                    }}
+                    onMouseEnter={e => { if (selectedCard !== "") e.currentTarget.style.borderColor = 'var(--text-muted)'; }}
+                    onMouseLeave={e => { if (selectedCard !== "") e.currentTarget.style.borderColor = 'var(--border)'; }}
                   >
-                    <strong>Nenhum cartão</strong>
-                    <p className="text-sm text-gray-600">Importar sem associar a cartão</p>
+                    <strong style={{ color: 'var(--text)' }}>Nenhum cartão</strong>
+                    <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>Importar sem associar a cartão</p>
                   </div>
                   
                   {cards.map(card => (
                     <div
                       key={card.id}
                       onClick={() => setSelectedCard(card.id)}
-                      className={`p-4 rounded-xl border cursor-pointer transition ${
-                        selectedCard === card.id
-                          ? "border-blue-500 bg-blue-50 ring-2 ring-blue-200"
-                          : "border-gray-200 hover:border-gray-400"
-                      }`}
+                      className="p-4 rounded-xl cursor-pointer transition"
+                      style={{
+                        border: selectedCard === card.id
+                          ? '2px solid var(--primary)'
+                          : '1px solid var(--border)',
+                        backgroundColor: selectedCard === card.id ? 'var(--primary-bg)' : 'var(--card)',
+                      }}
+                      onMouseEnter={e => { if (selectedCard !== card.id) e.currentTarget.style.borderColor = 'var(--text-muted)'; }}
+                      onMouseLeave={e => { if (selectedCard !== card.id) e.currentTarget.style.borderColor = 'var(--border)'; }}
                     >
-                      <strong>{card.name}</strong>
-                      <p className="text-sm text-gray-600">{card.bank}</p>
+                      <strong style={{ color: 'var(--text)' }}>{card.name}</strong>
+                      <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>{card.bank}</p>
                     </div>
                   ))}
                 </div>
 
                 <div 
-                  className={`border-2 border-dashed rounded-xl p-8 text-center transition-colors ${
-                    isDragging 
-                      ? "border-blue-500 bg-blue-50" 
-                      : "border-gray-300 hover:border-gray-400"
-                  }`}
+                  className="border-2 border-dashed rounded-xl p-8 text-center transition-colors"
+                  style={{
+                    borderColor: isDragging ? 'var(--primary)' : 'var(--border)',
+                    backgroundColor: isDragging ? 'var(--primary-bg)' : 'transparent',
+                  }}
                   onDragOver={handleDragOver}
                   onDragLeave={handleDragLeave}
                   onDrop={handleDrop}
                 >
-                  <Upload className="mx-auto mb-3 text-blue-600" />
-                  <p className="font-medium">Enviar fatura</p>
-                  <p className="text-sm text-gray-500 mb-4">
+                  <Upload className="mx-auto mb-3" style={{ color: 'var(--primary)' }} />
+                  <p className="font-medium" style={{ color: 'var(--text)' }}>Enviar fatura</p>
+                  <p className="text-sm mb-4" style={{ color: 'var(--text-muted)' }}>
                     Arquivo CSV (date, title, amount) ou arraste e solte aqui
                   </p>
 
@@ -409,7 +359,10 @@ const BillImportModal: React.FC<BillImportModalProps> = ({
                   <button
                     onClick={handleButtonClick}
                     disabled={isProcessing}
-                    className="px-6 py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 disabled:opacity-50"
+                    className="px-6 py-3 text-white rounded-xl disabled:opacity-50"
+                    style={{ backgroundColor: 'var(--primary)' }}
+                    onMouseEnter={e => { e.currentTarget.style.filter = 'brightness(0.9)'; }}
+                    onMouseLeave={e => { e.currentTarget.style.filter = ''; }}
                   >
                     {isProcessing ? "Processando..." : "Selecionar arquivo"}
                   </button>
@@ -420,10 +373,13 @@ const BillImportModal: React.FC<BillImportModalProps> = ({
             {/* STEP 2 */}
             {currentStep === 2 && (
               <div className="space-y-4">
-                <h3 className="font-semibold text-lg">Revisão</h3>
+                <h3 className="font-semibold text-lg" style={{ color: 'var(--text)' }}>Revisão</h3>
 
-                <div className="border rounded-xl overflow-hidden">
-                  <div className="grid grid-cols-3 bg-gray-100 px-4 py-2 text-sm font-medium">
+                <div className="rounded-xl overflow-hidden" style={{ border: '1px solid var(--border)' }}>
+                  <div
+                    className="grid grid-cols-3 px-4 py-2 text-sm font-medium"
+                    style={{ backgroundColor: 'var(--bg-secondary)', color: 'var(--text-secondary)' }}
+                  >
                     <span>Data</span>
                     <span>Descrição</span>
                     <span className="text-right">Valor</span>
@@ -433,18 +389,16 @@ const BillImportModal: React.FC<BillImportModalProps> = ({
                     {importSteps.flatMap(s => s.transactions || []).map((t, i) => (
                       <div
                         key={i}
-                        className="grid grid-cols-3 px-4 py-2 border-t text-sm"
+                        className="grid grid-cols-3 px-4 py-2 text-sm"
+                        style={{ borderTop: '1px solid var(--border)', color: 'var(--text)' }}
                       >
                         <span>
                           {new Date(t.date).toLocaleDateString("pt-BR")}
                         </span>
                         <span className="truncate">{t.description}</span>
                         <span
-                          className={`text-right font-medium ${
-                            t.type === "income"
-                              ? "text-green-600"
-                              : "text-red-600"
-                          }`}
+                          className="text-right font-medium"
+                          style={{ color: t.type === "income" ? 'var(--success)' : 'var(--danger)' }}
                         >
                           {t.amount.toLocaleString("pt-BR", {
                             style: "currency",
@@ -460,11 +414,15 @@ const BillImportModal: React.FC<BillImportModalProps> = ({
                   <button
                     onClick={() => setCurrentStep(1)}
                     className="px-4 py-2 border rounded-lg"
+                    style={{ borderColor: 'var(--border)', color: 'var(--text)', backgroundColor: 'var(--card)' }}
                   >
                     Voltar
                   </button>
                   <button
-                    className="px-6 py-2 bg-blue-600 text-white rounded-xl hover:bg-blue-700"
+                    className="px-6 py-2 text-white rounded-xl"
+                    style={{ backgroundColor: 'var(--primary)' }}
+                    onMouseEnter={e => { e.currentTarget.style.filter = 'brightness(0.9)'; }}
+                    onMouseLeave={e => { e.currentTarget.style.filter = ''; }}
                     onClick={async () => {
                       const all = importSteps.flatMap(
                         s => s.transactions || []
@@ -486,7 +444,7 @@ const BillImportModal: React.FC<BillImportModalProps> = ({
 };
 
 const Step = ({ active, label }: { active: boolean; label: string }) => (
-  <div className={`flex items-center gap-2 ${active ? "text-blue-600" : "text-gray-400"}`}>
+  <div className="flex items-center gap-2" style={{ color: active ? 'var(--primary)' : 'var(--text-muted)' }}>
     <CheckCircle2 size={16} />
     <span>{label}</span>
   </div>

@@ -14,6 +14,9 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [loading, setLoading] = useState(false);
+  const [focusedInput, setFocusedInput] = useState<string | null>(null);
+  const [hoverSubmit, setHoverSubmit] = useState(false);
+  const [hoverLink, setHoverLink] = useState(false);
 
   const { register } = useAuth();
   const { showWarning, showSuccess, showError } = useToast();
@@ -62,12 +65,28 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({
     }
   };
 
+  const inputStyle = (field: string): React.CSSProperties => ({
+    backgroundColor: 'var(--input-bg)',
+    borderColor: focusedInput === field ? 'var(--primary)' : 'var(--input-border)',
+    color: 'var(--text)',
+    ...(focusedInput === field ? { boxShadow: '0 0 0 2px var(--primary-bg)' } : {}),
+  });
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-green-50 to-emerald-100 flex items-center justify-center p-4">
+    <div
+      className="min-h-screen flex items-center justify-center p-4"
+      style={{ background: 'linear-gradient(to bottom right, var(--gradient-start), var(--gradient-end))' }}
+    >
       <div className="w-full max-w-md">
-        <div className="bg-white rounded-2xl shadow-xl p-8">
+        <div
+          className="rounded-2xl p-8"
+          style={{ backgroundColor: 'var(--card)', boxShadow: 'var(--shadow)' }}
+        >
           <div className="text-center mb-8">
-            <div className="w-16 h-16 bg-gradient-to-r from-green-600 to-emerald-600 rounded-xl mx-auto mb-4 flex items-center justify-center">
+            <div
+              className="w-16 h-16 rounded-xl mx-auto mb-4 flex items-center justify-center"
+              style={{ backgroundColor: 'var(--primary)' }}
+            >
               <svg
                 className="w-8 h-8 text-white"
                 fill="none"
@@ -82,10 +101,13 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({
                 />
               </svg>
             </div>
-            <h1 className="text-2xl font-bold text-gray-900 mb-2">
+            <h1
+              className="text-2xl font-bold mb-2"
+              style={{ color: 'var(--text)' }}
+            >
               Criar Conta
             </h1>
-            <p className="text-gray-600">
+            <p style={{ color: 'var(--text-secondary)' }}>
               Cadastre-se para começar a usar o dashboard
             </p>
           </div>
@@ -94,7 +116,8 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({
             <div>
               <label
                 htmlFor="name"
-                className="block text-sm font-medium text-gray-700 mb-2"
+                className="block text-sm font-medium mb-2"
+                style={{ color: 'var(--text)' }}
               >
                 Nome completo
               </label>
@@ -104,7 +127,10 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 placeholder="Seu nome completo"
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-colors"
+                className="w-full px-4 py-3 border rounded-lg transition-colors"
+                style={inputStyle('name')}
+                onFocus={() => setFocusedInput('name')}
+                onBlur={() => setFocusedInput(null)}
                 disabled={loading}
                 required
               />
@@ -113,7 +139,8 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({
             <div>
               <label
                 htmlFor="email"
-                className="block text-sm font-medium text-gray-700 mb-2"
+                className="block text-sm font-medium mb-2"
+                style={{ color: 'var(--text)' }}
               >
                 Email
               </label>
@@ -123,7 +150,10 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="seu@email.com"
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-colors"
+                className="w-full px-4 py-3 border rounded-lg transition-colors"
+                style={inputStyle('email')}
+                onFocus={() => setFocusedInput('email')}
+                onBlur={() => setFocusedInput(null)}
                 disabled={loading}
                 required
               />
@@ -132,7 +162,8 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({
             <div>
               <label
                 htmlFor="password"
-                className="block text-sm font-medium text-gray-700 mb-2"
+                className="block text-sm font-medium mb-2"
+                style={{ color: 'var(--text)' }}
               >
                 Senha
               </label>
@@ -142,7 +173,10 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="Mínimo 6 caracteres"
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-colors"
+                className="w-full px-4 py-3 border rounded-lg transition-colors"
+                style={inputStyle('password')}
+                onFocus={() => setFocusedInput('password')}
+                onBlur={() => setFocusedInput(null)}
                 disabled={loading}
                 required
               />
@@ -151,7 +185,8 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({
             <div>
               <label
                 htmlFor="confirmPassword"
-                className="block text-sm font-medium text-gray-700 mb-2"
+                className="block text-sm font-medium mb-2"
+                style={{ color: 'var(--text)' }}
               >
                 Confirmar senha
               </label>
@@ -161,7 +196,10 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
                 placeholder="Digite a senha novamente"
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-colors"
+                className="w-full px-4 py-3 border rounded-lg transition-colors"
+                style={inputStyle('confirmPassword')}
+                onFocus={() => setFocusedInput('confirmPassword')}
+                onBlur={() => setFocusedInput(null)}
                 disabled={loading}
                 required
               />
@@ -170,7 +208,12 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({
             <button
               type="submit"
               disabled={loading}
-              className="w-full bg-gradient-to-r from-green-600 to-emerald-600 text-white py-3 px-4 rounded-lg font-medium hover:from-green-700 hover:to-emerald-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
+              className="w-full text-white py-3 px-4 rounded-lg font-medium focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
+              style={{
+                backgroundColor: hoverSubmit ? 'var(--primary-light)' : 'var(--primary)',
+              }}
+              onMouseEnter={() => setHoverSubmit(true)}
+              onMouseLeave={() => setHoverSubmit(false)}
             >
               {loading ? (
                 <div className="flex items-center justify-center">
@@ -203,12 +246,15 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({
           </form>
 
           <div className="mt-6 text-center">
-            <p className="text-gray-600">
+            <p style={{ color: 'var(--text-secondary)' }}>
               Já tem uma conta?{" "}
               <button
                 type="button"
                 onClick={onSwitchToLogin}
-                className="text-green-600 hover:text-green-500 font-medium transition-colors"
+                className="font-medium transition-colors"
+                style={{ color: hoverLink ? 'var(--primary-light)' : 'var(--primary)' }}
+                onMouseEnter={() => setHoverLink(true)}
+                onMouseLeave={() => setHoverLink(false)}
               >
                 Faça login
               </button>

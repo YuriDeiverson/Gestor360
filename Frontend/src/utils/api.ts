@@ -1,6 +1,6 @@
 export const API_BASE_URL = import.meta.env.DEV
   ? "http://localhost:3002"
-  : import.meta.env.VITE_API_BASE_URL;
+  : import.meta.env.VITE_API_BASE_URL || import.meta.env.VITE_API_BASE_LOCAL_URL;
 
 // Verificação da URL base
 console.log("🌐 API_BASE_URL configurada:", API_BASE_URL);
@@ -163,24 +163,6 @@ export const budgetsApi = {
 
     return res.json();
   },
-
-  async payInstallment(id: string): Promise<Transaction> {
-    const res = await fetch(`${API_BASE_URL}/api/transacoes/${id}/pay-installment`, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${localStorage.getItem("authToken")}`,
-        "Content-Type": "application/json",
-      },
-    });
-
-    if (!res.ok) {
-      const errorData = await res.json().catch(() => ({}));
-      throw new Error(errorData.error || "Erro ao pagar parcela");
-    }
-
-    const data: ApiTransaction = await res.json();
-    return convertApiTransactionToFrontend(data);
-  },
 };
 
 /* =======================
@@ -196,9 +178,20 @@ export interface ApiTransaction {
   data: string;
   account: string;
   method: PaymentMethod;
-  budget_id: string;
+  budget_id: string | null;
+  /** Nome da categoria persistido (ex.: receitas sem orçamento) */
+  categoria?: string;
   dashboard_id?: string;
   created_at: string;
+  installments?: number;
+  currentinstallment?: number;
+  currentInstallment?: number;
+  totalamount?: number;
+  totalAmount?: number;
+  remainingamount?: number;
+  remainingAmount?: number;
+  nextpaymentdate?: string;
+  nextPaymentDate?: string;
   budget?: {
     id: string;
     nome: string;
@@ -217,8 +210,13 @@ export interface Transaction {
   date: string;
   account: string;
   method: PaymentMethod;
-  budgetId: string;
+  budgetId?: string;
   category: string;
+  installments?: number;
+  currentInstallment?: number;
+  totalAmount?: number;
+  nextPaymentDate?: string;
+  remainingAmount?: number;
 }
 
 function convertApiTransactionToFrontend(api: ApiTransaction): Transaction {
@@ -236,20 +234,42 @@ function convertApiTransactionToFrontend(api: ApiTransaction): Transaction {
     type = "expense";
   }
 
-  // Usar o nome da categoria do budget se disponível, senão usar categoria padrão
-  const category = api.budget?.nome || (api as any).categoria || "Sem categoria";
+  const rawCat = typeof api.categoria === "string" ? api.categoria.trim() : "";
+  const category = rawCat
+    ? rawCat
+    : api.budget?.nome || "Sem categoria";
+
+  const amountNum = Number(api.valor);
+  const inst = api.installments;
+  const cur =
+    api.currentinstallment != null ? api.currentinstallment : api.currentInstallment;
+  const totalAmt = api.totalamount ?? api.totalAmount;
+  const rem = api.remainingamount ?? api.remainingAmount;
+  const nextPay = api.nextpaymentdate ?? api.nextPaymentDate;
 
   return {
     id: api.id,
     description: api.descricao,
-    amount: Number(api.valor),
+    amount: Number.isFinite(amountNum) ? amountNum : 0,
     type,
     status: api.status,
     date: api.data,
     account: api.account,
     method: api.method,
-    budgetId: api.budget_id,
+    /** null no Supabase = sem orçamento (ex.: salário só com categoria) */
+    budgetId: api.budget_id ?? undefined,
     category,
+    ...(inst != null && inst > 0 ? { installments: inst } : {}),
+    ...(cur != null && cur > 0 ? { currentInstallment: cur } : {}),
+    ...(totalAmt != null && Number.isFinite(Number(totalAmt))
+      ? { totalAmount: Number(totalAmt) }
+      : {}),
+    ...(rem != null && Number.isFinite(Number(rem))
+      ? { remainingAmount: Number(rem) }
+      : {}),
+    ...(typeof nextPay === "string" && nextPay.trim()
+      ? { nextPaymentDate: nextPay.trim() }
+      : {}),
   };
 }
 
@@ -280,7 +300,8 @@ export const transactionsApi = {
     status?: TransactionStatus;
     account?: string;
     method?: PaymentMethod;
-    budget_id: string;
+    budget_id?: string | null;
+    categoria?: string;
     dashboard_id?: string;
   }): Promise<Transaction> {
     const res = await fetch(`${API_BASE_URL}/api/transacoes`, {
@@ -291,13 +312,22 @@ export const transactionsApi = {
       },
       body: JSON.stringify({
         ...transaction,
+        categoria:
+          (transaction as { categoria?: string }).categoria ??
+          (transaction as { category?: string }).category,
         status: transaction.status || "completed",
         account: transaction.account || "Conta Principal",
-        method: transaction.method || "PIX",
+        method: transaction.method ?? "PIX",
       }),
     });
 
-    if (!res.ok) throw new Error("Erro ao criar transação");
+    if (!res.ok) {
+      const errBody = await res.json().catch(() => ({}));
+      throw new Error(
+        (errBody as { error?: string }).error ||
+          `Erro ao criar transação (${res.status})`,
+      );
+    }
 
     const data: ApiTransaction = await res.json();
     return convertApiTransactionToFrontend(data);
@@ -313,7 +343,8 @@ export const transactionsApi = {
       status?: TransactionStatus;
       account?: string;
       method?: PaymentMethod;
-      budget_id?: string;
+      budget_id?: string | null;
+      categoria?: string;
       dashboard_id?: string;
       installments?: number;
       currentinstallment?: number;

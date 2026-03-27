@@ -9,9 +9,15 @@ const AuthPage: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center">
+      <div
+        className="min-h-screen flex items-center justify-center"
+        style={{ background: 'linear-gradient(to bottom right, var(--gradient-start), var(--gradient-end))' }}
+      >
         <div className="text-center">
-          <div className="w-16 h-16 bg-gradient-to-r from-blue-600 to-indigo-600 rounded-xl mx-auto mb-4 flex items-center justify-center">
+          <div
+            className="w-16 h-16 rounded-xl mx-auto mb-4 flex items-center justify-center"
+            style={{ backgroundColor: 'var(--primary)' }}
+          >
             <svg
               className="w-8 h-8 text-white animate-spin"
               fill="none"
@@ -26,7 +32,7 @@ const AuthPage: React.FC = () => {
               />
             </svg>
           </div>
-          <p className="text-gray-600">Carregando...</p>
+          <p style={{ color: 'var(--text-secondary)' }}>Carregando...</p>
         </div>
       </div>
     );

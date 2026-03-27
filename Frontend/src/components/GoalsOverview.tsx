@@ -15,18 +15,35 @@ const GoalItem: React.FC<{ goal: Goal }> = ({ goal }) => {
   return (
     <div>
       <div className="flex justify-between mb-1">
-        <span className="text-sm font-medium text-gray-900">{goal.name}</span>
-        <span className="text-sm font-semibold text-emerald-600">
+        <span
+          className="text-sm font-medium"
+          style={{ color: 'var(--text)' }}
+        >
+          {goal.name}
+        </span>
+        <span
+          className="text-sm font-semibold"
+          style={{ color: 'var(--primary)' }}
+        >
           {progress.toFixed(0)}%
         </span>
       </div>
-      <div className="w-full bg-gray-100 rounded-full h-2">
+      <div
+        className="w-full rounded-full h-2"
+        style={{ backgroundColor: 'var(--bg-secondary)' }}
+      >
         <div
-          className="bg-emerald-600 h-2 rounded-full transition-all duration-300"
-          style={{ width: `${progress}%` }}
+          className="h-2 rounded-full transition-all duration-300"
+          style={{
+            width: `${progress}%`,
+            backgroundColor: 'var(--primary)',
+          }}
         />
       </div>
-      <p className="text-xs text-gray-500 mt-1">
+      <p
+        className="text-xs mt-1"
+        style={{ color: 'var(--text-secondary)' }}
+      >
         {goal.currentAmount.toLocaleString("pt-BR", {
           style: "currency",
           currency: "BRL",
@@ -45,12 +62,24 @@ const GoalsOverview: React.FC<GoalsOverviewProps> = ({
   goals,
   setActivePage,
 }) => (
-  <div className="bg-white/80 backdrop-blur-md rounded-2xl p-6 shadow-[0_6px_24px_rgba(12,12,16,0.06)]">
+  <div
+    className="backdrop-blur-md rounded-2xl p-6"
+    style={{
+      backgroundColor: 'var(--card)',
+      boxShadow: 'var(--shadow)',
+    }}
+  >
     <div className="flex justify-between items-center mb-4">
-      <h3 className="text-lg font-medium text-gray-900">Progresso das Metas</h3>
+      <h3
+        className="text-lg font-medium"
+        style={{ color: 'var(--text)' }}
+      >
+        Progresso das Metas
+      </h3>
       <button
         onClick={() => setActivePage("goals")}
-        className="text-sm text-sky-600 hover:underline"
+        className="text-sm hover:underline"
+        style={{ color: 'var(--primary)' }}
       >
         Ver todas
       </button>
@@ -60,7 +89,12 @@ const GoalsOverview: React.FC<GoalsOverviewProps> = ({
       {goals.length > 0 ? (
         goals.slice(0, 3).map((goal) => <GoalItem key={goal.id} goal={goal} />)
       ) : (
-        <p className="text-center text-gray-500 py-4">Nenhuma meta definida.</p>
+        <p
+          className="text-center py-4"
+          style={{ color: 'var(--text-secondary)' }}
+        >
+          Nenhuma meta definida.
+        </p>
       )}
     </div>
   </div>

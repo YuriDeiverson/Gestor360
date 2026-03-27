@@ -22,6 +22,11 @@ const MONTHS = [
   "Dez",
 ];
 
+const cssVar = (name: string, fallback: string): string => {
+  if (typeof document === 'undefined') return fallback;
+  return getComputedStyle(document.documentElement).getPropertyValue(name).trim() || fallback;
+};
+
 const TransactionCharts: React.FC<TransactionChartsProps> = ({
   data,
   chartType,
@@ -35,7 +40,6 @@ const TransactionCharts: React.FC<TransactionChartsProps> = ({
   const chartData = useMemo(() => {
     const monthly: Record<number, { receita: number; despesa: number }> = {};
 
-    // Inicializar todos os meses
     MONTHS.forEach((_, index) => {
       monthly[index] = { receita: 0, despesa: 0 };
     });
@@ -62,7 +66,10 @@ const TransactionCharts: React.FC<TransactionChartsProps> = ({
 
   if (!recharts) {
     return (
-      <div className="h-full w-full rounded-xl bg-gray-100 animate-pulse" />
+      <div
+        className="h-full w-full rounded-xl animate-pulse"
+        style={{ backgroundColor: 'var(--bg-secondary)' }}
+      />
     );
   }
 
@@ -81,13 +88,26 @@ const TransactionCharts: React.FC<TransactionChartsProps> = ({
     Legend,
   } = recharts;
 
+  const successColor = cssVar('--success', '#16A34A');
+  const dangerColor = cssVar('--danger', '#DC2626');
+  const borderColor = cssVar('--border', '#e5e7eb');
+  const textSecondary = cssVar('--text-secondary', '#6b7280');
+
+  const tooltipStyle = {
+    fontSize: '12px',
+    borderRadius: '8px',
+    border: '1px solid var(--border)',
+    backgroundColor: 'var(--card)',
+    color: 'var(--text)',
+  };
+
   const commonProps = {
     data: chartData,
-    margin: { 
-      top: 16, 
-      right: 8, 
-      left: 16, 
-      bottom: 16 
+    margin: {
+      top: 16,
+      right: 8,
+      left: 16,
+      bottom: 16,
     },
   };
 
@@ -98,51 +118,45 @@ const TransactionCharts: React.FC<TransactionChartsProps> = ({
       <AreaChart {...commonProps}>
         <defs>
           <linearGradient id="receitaFill" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="5%" stopColor="#10b981" stopOpacity={0.8} />
-            <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
+            <stop offset="5%" stopColor={successColor} stopOpacity={0.8} />
+            <stop offset="95%" stopColor={successColor} stopOpacity={0} />
           </linearGradient>
           <linearGradient id="despesaFill" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="5%" stopColor="#ef4444" stopOpacity={0.8} />
-            <stop offset="95%" stopColor="#ef4444" stopOpacity={0} />
+            <stop offset="5%" stopColor={dangerColor} stopOpacity={0.8} />
+            <stop offset="95%" stopColor={dangerColor} stopOpacity={0} />
           </linearGradient>
         </defs>
 
         <CartesianGrid
           strokeDasharray="3 3"
           vertical={false}
-          stroke="#e5e7eb"
+          stroke={borderColor}
         />
-        <XAxis 
-          dataKey="month" 
-          axisLine={false} 
+        <XAxis
+          dataKey="month"
+          axisLine={false}
           tickLine={false}
-          tick={{ fontSize: 12 }}
+          tick={{ fontSize: 12, fill: textSecondary }}
         />
         <YAxis
           width={60}
           axisLine={false}
           tickLine={false}
           tickFormatter={(v: number) => formatCurrency(v)}
-          tick={{ fontSize: 11 }}
+          tick={{ fontSize: 11, fill: textSecondary }}
         />
-        <Tooltip 
+        <Tooltip
           formatter={(v: number) => formatCurrency(v)}
-          contentStyle={{
-            fontSize: '12px',
-            borderRadius: '8px',
-            border: '1px solid #e5e7eb'
-          }}
+          contentStyle={tooltipStyle}
         />
-        <Legend 
-          wrapperStyle={{
-            fontSize: '12px'
-          }}
+        <Legend
+          wrapperStyle={{ fontSize: '12px' }}
         />
         <Area
           type="monotone"
           dataKey="receita"
           name="Receita"
-          stroke="#10b981"
+          stroke={successColor}
           fill="url(#receitaFill)"
           strokeWidth={2}
         />
@@ -150,7 +164,7 @@ const TransactionCharts: React.FC<TransactionChartsProps> = ({
           type="monotone"
           dataKey="despesa"
           name="Despesa"
-          stroke="#ef4444"
+          stroke={dangerColor}
           fill="url(#despesaFill)"
           strokeWidth={2}
         />
@@ -162,44 +176,38 @@ const TransactionCharts: React.FC<TransactionChartsProps> = ({
         <CartesianGrid
           strokeDasharray="3 3"
           vertical={false}
-          stroke="#e5e7eb"
+          stroke={borderColor}
         />
-        <XAxis 
-          dataKey="month" 
-          axisLine={false} 
+        <XAxis
+          dataKey="month"
+          axisLine={false}
           tickLine={false}
-          tick={{ fontSize: 12 }}
+          tick={{ fontSize: 12, fill: textSecondary }}
         />
         <YAxis
           width={60}
           axisLine={false}
           tickLine={false}
           tickFormatter={(v: number) => formatCurrency(v)}
-          tick={{ fontSize: 11 }}
+          tick={{ fontSize: 11, fill: textSecondary }}
         />
-        <Tooltip 
+        <Tooltip
           formatter={(v: number) => formatCurrency(v)}
-          contentStyle={{
-            fontSize: '12px',
-            borderRadius: '8px',
-            border: '1px solid #e5e7eb'
-          }}
+          contentStyle={tooltipStyle}
         />
-        <Legend 
-          wrapperStyle={{
-            fontSize: '12px'
-          }}
+        <Legend
+          wrapperStyle={{ fontSize: '12px' }}
         />
         <Bar
           dataKey="receita"
           name="Receita"
-          fill="#10b981"
+          fill={successColor}
           radius={[8, 8, 0, 0]}
         />
         <Bar
           dataKey="despesa"
           name="Despesa"
-          fill="#ef4444"
+          fill={dangerColor}
           radius={[8, 8, 0, 0]}
         />
       </BarChart>
@@ -210,50 +218,44 @@ const TransactionCharts: React.FC<TransactionChartsProps> = ({
         <CartesianGrid
           strokeDasharray="3 3"
           vertical={false}
-          stroke="#e5e7eb"
+          stroke={borderColor}
         />
-        <XAxis 
-          dataKey="month" 
-          axisLine={false} 
+        <XAxis
+          dataKey="month"
+          axisLine={false}
           tickLine={false}
-          tick={{ fontSize: 12 }}
+          tick={{ fontSize: 12, fill: textSecondary }}
         />
         <YAxis
           width={60}
           axisLine={false}
           tickLine={false}
           tickFormatter={(v: number) => formatCurrency(v)}
-          tick={{ fontSize: 11 }}
+          tick={{ fontSize: 11, fill: textSecondary }}
         />
-        <Tooltip 
+        <Tooltip
           formatter={(v: number) => formatCurrency(v)}
-          contentStyle={{
-            fontSize: '12px',
-            borderRadius: '8px',
-            border: '1px solid #e5e7eb'
-          }}
+          contentStyle={tooltipStyle}
         />
-        <Legend 
-          wrapperStyle={{
-            fontSize: '12px'
-          }}
+        <Legend
+          wrapperStyle={{ fontSize: '12px' }}
         />
         <Line
           type="monotone"
           dataKey="receita"
           name="Receita"
-          stroke="#10b981"
+          stroke={successColor}
           strokeWidth={3}
-          dot={{ fill: "#10b981", r: 4 }}
+          dot={{ fill: successColor, r: 4 }}
           activeDot={{ r: 6 }}
         />
         <Line
           type="monotone"
           dataKey="despesa"
           name="Despesa"
-          stroke="#ef4444"
+          stroke={dangerColor}
           strokeWidth={3}
-          dot={{ fill: "#ef4444", r: 4 }}
+          dot={{ fill: dangerColor, r: 4 }}
           activeDot={{ r: 6 }}
         />
       </LineChart>

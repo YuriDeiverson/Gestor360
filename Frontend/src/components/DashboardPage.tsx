@@ -43,14 +43,16 @@ function convertApiCardToFrontend(apiCard: any): Card {
 }
 import { Budget, Transaction, Goal } from "../utils/types";
 import { Meta, BudgetCategory } from "../utils/api";
+import { computeFinancialAlerts } from "../utils/financialAlerts";
 import DashboardContent from "./DashboardContent";
 import TransactionsPage from "./TransactionsPage";
 import GoalsPage from "./GoalsPage";
 import BudgetsPage from "./BudgetsPage";
-import CardsPage from "./CardsPage";
 import CardsDashboardPage from "./CardsDashboardPage";
 import CardsDashboard from "./CardsDashboard";
 import BillImportModal from "./BillImportModal";
+import AccountsPage from "./AccountsPage";
+import { subscriptionsApi, Subscription } from "../utils/subscriptionsApi";
 
 // Tipo simples para Category
 interface Category {
@@ -69,7 +71,13 @@ const DashboardPage: React.FC = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [activePage, setActivePage] = useState<
-    "dashboard" | "transactions" | "goals" | "budgets" | "cards"
+    | "dashboard"
+    | "income"
+    | "expenses"
+    | "goals"
+    | "budgets"
+    | "cards"
+    | "subscriptions"
   >("dashboard");
 
   // Data state
@@ -87,6 +95,7 @@ const DashboardPage: React.FC = () => {
   }, [localGoalsChanges]); 
   const [budgetCategories, setBudgetCategories] = useState<BudgetCategory[]>([]);
   const [cards, setCards] = useState<Card[]>([]);
+  const [subscriptions, setSubscriptions] = useState<Subscription[]>([]);
 
   // Funções para gerenciar cartões
   const addCard = async (card: Omit<Card, "id">) => {
@@ -122,8 +131,65 @@ const DashboardPage: React.FC = () => {
     try {
       await cardsApi.delete(id);
       setCards(prev => prev.filter(c => c.id !== id));
+      setSubscriptions(prev => prev.filter(s => s.cardId !== id));
     } catch (error) {
       console.error("Erro ao excluir cartão:", error);
+    }
+  };
+
+  const addSubscription = async (payload: Omit<Subscription, "id"> & { dashboardId: string }) => {
+    try {
+      const created = await subscriptionsApi.create(payload);
+      setSubscriptions((prev) =>
+        [...prev, created].sort((a, b) => a.name.localeCompare(b.name)),
+      );
+      showSuccess("Assinatura criada", `${created.name} foi adicionada.`);
+      await loadData();
+    } catch (e) {
+      console.error(e);
+      showError("Erro", "Não foi possível criar a assinatura. Verifique se a tabela existe no banco.");
+    }
+  };
+
+  const editSubscription = async (
+    id: string,
+    partial: Partial<Omit<Subscription, "id" | "dashboardId">>,
+  ) => {
+    try {
+      const updated = await subscriptionsApi.update(id, partial);
+      setSubscriptions((prev) =>
+        prev
+          .map((s) => (s.id === id ? updated : s))
+          .sort((a, b) => a.name.localeCompare(b.name)),
+      );
+      showSuccess("Assinatura atualizada", `${updated.name} foi salva.`);
+      await loadData();
+    } catch (e) {
+      console.error(e);
+      showError("Erro", "Não foi possível salvar a assinatura.");
+    }
+  };
+
+  const deleteSubscription = async (id: string) => {
+    const sub = subscriptions.find((s) => s.id === id);
+    const ok = await showConfirmation({
+      title: "Excluir assinatura",
+      message: sub
+        ? `Remover "${sub.name}" da lista de contas?`
+        : "Remover esta assinatura?",
+      confirmText: "Excluir",
+      cancelText: "Cancelar",
+      type: "danger",
+    });
+    if (!ok) return;
+    try {
+      await subscriptionsApi.delete(id);
+      setSubscriptions((prev) => prev.filter((s) => s.id !== id));
+      showSuccess("Assinatura removida", "A conta foi excluída da lista.");
+      await loadData();
+    } catch (e) {
+      console.error(e);
+      showError("Erro", "Não foi possível excluir a assinatura.");
     }
   };
   const [categories, setCategories] = useState<Category[]>([]);
@@ -292,6 +358,14 @@ const DashboardPage: React.FC = () => {
       
       setBudgetCategories(budgetsData);
       setCards(cardsData);
+
+      try {
+        const subs = await subscriptionsApi.getAll(currentDashboard.id);
+        setSubscriptions(subs);
+      } catch (subErr) {
+        console.warn("Assinaturas (Contas) não carregadas:", subErr);
+        setSubscriptions([]);
+      }
       
       // Verificar se atualizou após um pequeno delay
       setTimeout(() => {
@@ -406,15 +480,59 @@ const DashboardPage: React.FC = () => {
     return filtered;
   }, [transactions, filters]);
 
+  const financialAlerts = useMemo(
+    () =>
+      computeFinancialAlerts(
+        transactions,
+        budgetCategories,
+        cards.map((c) => ({
+          limit: c.limit,
+          currentBalance: c.currentBalance,
+        })),
+      ),
+    [transactions, budgetCategories, cards],
+  );
+
   // Handlers to modify data
   const addTransaction = async (newTransaction: any) => {
     try {
-      // O modal envia budget_id diretamente, não budgetId
-      const budgetId = (newTransaction as any).budget_id || (newTransaction as any).budgetId;
-      
-      // Para salário e transações com account (cartão), budgetId é opcional
-      // Transações de cartão de crédito não precisam de budget_id
-      if (!budgetId && !newTransaction.account && newTransaction.method !== "Salário" && newTransaction.method !== "Cartão de Crédito") {
+      // O modal envia budget_id diretamente, não budgetId (string vazia quebra FK no banco)
+      const budgetIdRaw =
+        (newTransaction as any).budget_id || (newTransaction as any).budgetId;
+      const budgetIdClean =
+        budgetIdRaw && String(budgetIdRaw).trim()
+          ? String(budgetIdRaw).trim()
+          : null;
+
+      const incomeCategoryName = (newTransaction as any).category as string | undefined;
+      const isIncomeWithCategory =
+        newTransaction.type === "income" &&
+        typeof incomeCategoryName === "string" &&
+        incomeCategoryName.trim().length > 0;
+
+      const accountClean =
+        newTransaction.account != null && String(newTransaction.account).trim()
+          ? String(newTransaction.account).trim()
+          : "";
+
+      /** Sempre enviar categoria em receitas (coluna NOT NULL no Supabase). */
+      const categoriaForApi =
+        newTransaction.type === "income"
+          ? isIncomeWithCategory
+            ? incomeCategoryName!.trim()
+            : newTransaction.method === "Salário"
+              ? "Salário"
+              : "Outros"
+          : undefined;
+
+      // Orçamento opcional: salário (legado), cartão, ou receita com categoria fixa
+      if (
+        !budgetIdClean &&
+        !isIncomeWithCategory &&
+        !accountClean &&
+        newTransaction.method !== "Salário" &&
+        newTransaction.method !== "Cartão de Crédito"
+      ) {
         throw new Error("budget_id é obrigatório");
       }
 
@@ -426,7 +544,8 @@ const DashboardPage: React.FC = () => {
         descricao: newTransaction.description,
         valor: newTransaction.amount,
         tipo: (newTransaction.type === "income" ? "receita" : "despesa") as any,
-        budget_id: budgetId ?? null,
+        budget_id: budgetIdClean,
+        categoria: categoriaForApi,
         data: newTransaction.date,
         dashboard_id: currentDashboard.id,
         // Campos de parcelamento (snake_case para o banco)
@@ -435,8 +554,8 @@ const DashboardPage: React.FC = () => {
         totalamount: newTransaction.totalAmount,
         remainingamount: newTransaction.remainingAmount,
         nextpaymentdate: newTransaction.nextPaymentDate,
-        // Outros campos
-        method: newTransaction.method,
+        // Outros campos (method sempre definido para o backend não assumir PIX por engano)
+        method: newTransaction.method ?? "PIX",
         account: newTransaction.account,
         status: newTransaction.status ?? "completed",
       } as any;
@@ -456,13 +575,15 @@ const DashboardPage: React.FC = () => {
     } catch (error) {
       console.error(" Erro ao salvar transação:", error);
       console.error(" Detalhes do erro:", {
-        message: error.message,
-        stack: error.stack,
+        message: error instanceof Error ? error.message : error,
+        stack: error instanceof Error ? error.stack : undefined,
         transaction: newTransaction
       });
       showError(
         "Erro ao criar transação",
-        "Não foi possível salvar a transação. Tente novamente.",
+        error instanceof Error
+          ? error.message
+          : "Não foi possível salvar a transação. Tente novamente.",
       );
     }
   };
@@ -475,7 +596,9 @@ const DashboardPage: React.FC = () => {
   descricao: editedTransaction.description,
   valor: editedTransaction.amount,
   tipo: (editedTransaction.type === "income" ? "receita" : "despesa") as any,
-  budget_id: editedTransaction.budgetId,
+  budget_id: editedTransaction.budgetId ?? null,
+  categoria:
+    editedTransaction.type === "income" ? editedTransaction.category : undefined,
   data: editedTransaction.date,
   dashboard_id: currentDashboard?.id,
   installments: editedTransaction.installments,
@@ -941,16 +1064,21 @@ const DashboardPage: React.FC = () => {
         return (
           <DashboardContent
             transactions={filteredTransactions}
+            transactionsAll={transactions}
+            subscriptions={subscriptions}
             goals={goals}
+            budgets={budgetCategories}
             setActivePage={handleSetActivePage}
             payInstallment={payInstallment}
-            cards={cards}
           />
         );
-      case "transactions":
+      case "income":
+      case "expenses":
         return (
           <TransactionsPage
-            transactions={filteredTransactions}
+            mode={activePage === "income" ? "income" : "expense"}
+            /** Lista completa do dashboard: filtros globais (contas/período) escondiam receitas PIX/Débito/Salário */
+            transactions={transactions}
             addTransaction={addTransaction}
             editTransaction={editTransaction}
             deleteTransaction={deleteTransaction}
@@ -983,9 +1111,21 @@ const DashboardPage: React.FC = () => {
           <CardsDashboardPage
             cards={cards}
             transactions={transactions} // Usar todas as transações, não apenas as filtradas
+            subscriptions={subscriptions}
             onAddCard={addCard}
             onEditCard={editCard}
             onDeleteCard={deleteCard}
+          />
+        );
+      case "subscriptions":
+        return (
+          <AccountsPage
+            subscriptions={subscriptions}
+            cards={cards.map((c) => ({ id: c.id, name: c.name, bank: c.bank }))}
+            dashboardId={currentDashboard?.id}
+            onAdd={addSubscription}
+            onEdit={editSubscription}
+            onDelete={deleteSubscription}
           />
         );
       case "goals":
@@ -1013,14 +1153,17 @@ const DashboardPage: React.FC = () => {
         return loading ? (
           <div className="flex items-center justify-center h-full">
             <div className="text-center">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-              <p className="mt-4 text-gray-600">Carregando...</p>
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2" style={{ borderColor: 'var(--primary)' }}></div>
+              <p className="mt-4" style={{ color: 'var(--text-secondary)' }}>Carregando...</p>
             </div>
           </div>
         ) : (
           <DashboardContent
             transactions={filteredTransactions}
+            transactionsAll={transactions}
+            subscriptions={subscriptions}
             goals={goals}
+            budgets={budgetCategories}
             setActivePage={handleSetActivePage}
             payInstallment={payInstallment}
           />
@@ -1029,7 +1172,7 @@ const DashboardPage: React.FC = () => {
   };
 
   return (
-    <div className="flex h-screen bg-[#f6f7f8] text-gray-900 font-sans">
+    <div className="flex h-screen font-sans transition-colors duration-300" style={{ backgroundColor: 'var(--bg)', color: 'var(--text)' }}>
       <Sidebar
         isOpen={isSidebarOpen}
         setIsOpen={setIsSidebarOpen}
@@ -1050,6 +1193,7 @@ const DashboardPage: React.FC = () => {
         <Navbar
           user={user}
           toggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)}
+          financialAlerts={financialAlerts}
         />
 
         {/* Conteúdo Principal - Responsivo */}

@@ -25,6 +25,8 @@ const ConfirmModal: React.FC<ConfirmModalProps> = ({
   details = [],
 }) => {
   const [isLoading, setIsLoading] = useState(false);
+  const [cancelHovered, setCancelHovered] = useState(false);
+  const [confirmHovered, setConfirmHovered] = useState(false);
 
   const handleConfirm = async () => {
     setIsLoading(true);
@@ -44,9 +46,9 @@ const ConfirmModal: React.FC<ConfirmModalProps> = ({
     switch (type) {
       case "danger":
         return {
-          iconBg: "bg-red-100",
-          iconColor: "text-red-600",
-          confirmButton: "bg-red-600 hover:bg-red-700 focus:ring-red-500",
+          iconBgStyle: { backgroundColor: "var(--danger-bg)" },
+          iconColorStyle: { color: "var(--danger)" },
+          confirmBg: "var(--danger)",
           icon: (
             <svg
               className="w-6 h-6"
@@ -65,10 +67,9 @@ const ConfirmModal: React.FC<ConfirmModalProps> = ({
         };
       case "warning":
         return {
-          iconBg: "bg-yellow-100",
-          iconColor: "text-yellow-600",
-          confirmButton:
-            "bg-yellow-600 hover:bg-yellow-700 focus:ring-yellow-500",
+          iconBgStyle: { backgroundColor: "var(--warning-bg)" },
+          iconColorStyle: { color: "var(--warning)" },
+          confirmBg: "var(--warning)",
           icon: (
             <svg
               className="w-6 h-6"
@@ -87,9 +88,9 @@ const ConfirmModal: React.FC<ConfirmModalProps> = ({
         };
       case "info":
         return {
-          iconBg: "bg-blue-100",
-          iconColor: "text-blue-600",
-          confirmButton: "bg-blue-600 hover:bg-blue-700 focus:ring-blue-500",
+          iconBgStyle: { backgroundColor: "var(--primary-bg)" },
+          iconColorStyle: { color: "var(--primary)" },
+          confirmBg: "var(--primary)",
           icon: (
             <svg
               className="w-6 h-6"
@@ -113,33 +114,64 @@ const ConfirmModal: React.FC<ConfirmModalProps> = ({
 
   return (
     <Portal>
-      <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[9998] p-4">
-        <div className="bg-white rounded-2xl p-6 w-full max-w-md shadow-2xl border border-gray-200 transform transition-all duration-300 scale-100">
+      <div
+        className="fixed inset-0 backdrop-blur-sm flex items-center justify-center z-[9998] p-4"
+        style={{ backgroundColor: "var(--overlay)" }}
+      >
+        <div
+          className="rounded-2xl p-6 w-full max-w-md transform transition-all duration-300 scale-100"
+          style={{
+            backgroundColor: "var(--card)",
+            border: "1px solid var(--border)",
+            boxShadow: "var(--shadow)",
+          }}
+        >
           {/* Header */}
           <div className="flex items-start gap-4 mb-4">
             <div
-              className={`flex-shrink-0 w-12 h-12 rounded-full ${typeStyles.iconBg} ${typeStyles.iconColor} flex items-center justify-center`}
+              className="flex-shrink-0 w-12 h-12 rounded-full flex items-center justify-center"
+              style={{ ...typeStyles.iconBgStyle, ...typeStyles.iconColorStyle }}
             >
               {typeStyles.icon}
             </div>
             <div className="flex-1">
-              <h3 className="text-lg font-semibold text-gray-900 mb-1">
+              <h3
+                className="text-lg font-semibold mb-1"
+                style={{ color: "var(--text)" }}
+              >
                 {title}
               </h3>
-              <p className="text-sm text-gray-600 leading-relaxed">{message}</p>
+              <p
+                className="text-sm leading-relaxed"
+                style={{ color: "var(--text-secondary)" }}
+              >
+                {message}
+              </p>
             </div>
           </div>
 
           {/* Details */}
           {details.length > 0 && (
-            <div className="bg-gray-50 rounded-lg p-4 mb-6 border border-gray-200">
+            <div
+              className="rounded-lg p-4 mb-6"
+              style={{
+                backgroundColor: "var(--bg-secondary)",
+                border: "1px solid var(--border)",
+              }}
+            >
               <div className="space-y-2">
                 {details.map((detail, index) => (
                   <div
                     key={index}
-                    className="text-sm text-gray-700 flex items-start gap-2"
+                    className="text-sm flex items-start gap-2"
+                    style={{ color: "var(--text)" }}
                   >
-                    <span className="text-gray-400 flex-shrink-0">•</span>
+                    <span
+                      className="flex-shrink-0"
+                      style={{ color: "var(--text-muted)" }}
+                    >
+                      •
+                    </span>
                     <span>{detail}</span>
                   </div>
                 ))}
@@ -153,7 +185,16 @@ const ConfirmModal: React.FC<ConfirmModalProps> = ({
               type="button"
               onClick={onClose}
               disabled={isLoading}
-              className="px-4 py-2.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200"
+              onMouseEnter={() => setCancelHovered(true)}
+              onMouseLeave={() => setCancelHovered(false)}
+              className="px-4 py-2.5 text-sm font-medium rounded-lg focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200"
+              style={{
+                color: "var(--text)",
+                backgroundColor: cancelHovered
+                  ? "var(--bg-secondary)"
+                  : "var(--card)",
+                border: "1px solid var(--border)",
+              }}
             >
               {cancelText}
             </button>
@@ -161,7 +202,13 @@ const ConfirmModal: React.FC<ConfirmModalProps> = ({
               type="button"
               onClick={handleConfirm}
               disabled={isLoading}
-              className={`px-4 py-2.5 text-sm font-medium text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200 ${typeStyles.confirmButton} min-w-[80px] flex items-center justify-center`}
+              onMouseEnter={() => setConfirmHovered(true)}
+              onMouseLeave={() => setConfirmHovered(false)}
+              className="px-4 py-2.5 text-sm font-medium text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200 min-w-[80px] flex items-center justify-center"
+              style={{
+                backgroundColor: typeStyles.confirmBg,
+                filter: confirmHovered ? "brightness(0.9)" : "none",
+              }}
             >
               {isLoading ? (
                 <svg

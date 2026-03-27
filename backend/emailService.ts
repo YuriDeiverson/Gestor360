@@ -42,7 +42,7 @@ class EmailService {
       return { messageId: "mock-email-id", skipped: true };
     }
 
-    const inviteLink = `${process.env.FRONTEND_URL || "https://financeiroplus.vercel.app"}/invite/${inviteToken}`;
+    const inviteLink = `${process.env.FRONTEND_URL ||  process.env.FRONTEND_LOCAL_URL || "https://financeiroplus.vercel.app"}/invite/${inviteToken}`;
 
     const htmlContent = this.generateInviteTemplate({
       inviteEmail,

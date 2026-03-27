@@ -1,6 +1,25 @@
-import React, { useState, useMemo } from "react";
-import { CreditCard, Plus, TrendingDown, AlertCircle, Eye, EyeOff, Trash2, Edit2 } from "lucide-react";
+import React, { useState, useMemo, useCallback } from "react";
+import {
+  CreditCard,
+  Plus,
+  TrendingDown,
+  AlertCircle,
+  Eye,
+  EyeOff,
+  Trash2,
+  Edit2,
+  Wallet,
+  X,
+} from "lucide-react";
 import { Transaction } from "../utils/types";
+import type { Subscription } from "../utils/subscriptionsApi";
+import Portal from "./Portal";
+import {
+  CARD_BRAND_PRESETS,
+  getCardBrandStyle,
+  matchPresetByBankLabel,
+} from "../utils/cardBrands";
+import { currentMonthLabel, isDateInCurrentMonth } from "../utils/dateMonth";
 
 interface Card {
   id: string;
@@ -10,15 +29,17 @@ interface Card {
   closingDay: number;
   dueDay: number;
   currentBalance: number;
-  status: 'active' | 'inactive' | 'overdue';
+  status: "active" | "inactive" | "overdue";
   nextDueDate?: string;
 }
 
 interface CardsDashboardPageProps {
   cards: Card[];
   transactions: Transaction[];
-  onAddCard: (card: Omit<Card, "id">) => void;
-  onEditCard: (card: Card) => void;
+  /** Contas (assinaturas) por cartão — entram na fatura atual sem duplicar lançamentos "Assinatura:" */
+  subscriptions?: Subscription[];
+  onAddCard: (card: Omit<Card, "id">) => void | Promise<void>;
+  onEditCard: (card: Card) => void | Promise<void>;
   onDeleteCard: (id: string) => void;
 }
 
@@ -34,106 +55,151 @@ interface CardSummary {
   nextInvoice: number;
 }
 
+const defaultForm = (): Partial<Card> => ({
+  name: "",
+  bank: "Outro",
+  limit: 0,
+  closingDay: 1,
+  dueDay: 10,
+});
+
+/** Plástico de cartão — proporção ISO ~1.586:1 */
+const CreditCardPlastic: React.FC<{
+  bankLabel: string;
+  cardName: string;
+  className?: string;
+}> = ({ bankLabel, cardName, className = "" }) => {
+  const style = getCardBrandStyle(bankLabel);
+  return (
+    <div
+      className={`relative rounded-2xl p-5 flex flex-col justify-between overflow-hidden shadow-xl ${className}`}
+      style={{
+        aspectRatio: "1.586 / 1",
+        background: style.gradient,
+        boxShadow: "0 18px 40px rgba(0,0,0,0.28)",
+      }}
+    >
+      <div
+        className="absolute inset-0 pointer-events-none rounded-2xl"
+        style={{
+          background:
+            "linear-gradient(135deg, rgba(255,255,255,0.2) 0%, transparent 42%, rgba(0,0,0,0.25) 100%)",
+        }}
+      />
+      <div
+        className="absolute -right-8 -top-8 w-32 h-32 rounded-full pointer-events-none opacity-25"
+        style={{ background: "rgba(255,255,255,0.35)" }}
+      />
+      <div className="relative z-[1] flex justify-between items-start gap-2">
+        <div
+          className="h-9 w-12 rounded-md"
+          style={{
+            background:
+              "linear-gradient(145deg, #d4af37 0%, #f5e6a8 40%, #b8860b 100%)",
+            boxShadow: "inset 0 1px 2px rgba(255,255,255,0.5)",
+          }}
+        />
+        <CreditCard
+          className="w-7 h-7 opacity-90 shrink-0"
+          style={{ color: style.textColor }}
+          strokeWidth={1.5}
+        />
+      </div>
+      <div className="relative z-[1] space-y-3 mt-2">
+        <p
+          className="text-[11px] font-semibold uppercase tracking-[0.2em]"
+          style={{ color: style.subtextColor }}
+        >
+          {bankLabel || "Cartão"}
+        </p>
+        <p
+          className="text-lg sm:text-xl font-semibold tracking-wide truncate"
+          style={{ color: style.textColor }}
+        >
+          {cardName || "Seu cartão"}
+        </p>
+        <p
+          className="font-mono text-sm tracking-[0.35em]"
+          style={{ color: style.subtextColor }}
+        >
+          •••• •••• •••• 4242
+        </p>
+      </div>
+    </div>
+  );
+};
+
 const CardsDashboardPage: React.FC<CardsDashboardPageProps> = ({
   cards,
   transactions,
+  subscriptions = [],
   onAddCard,
   onEditCard,
   onDeleteCard,
 }) => {
-  const [showAddModal, setShowAddModal] = useState(false);
+  const [showModal, setShowModal] = useState(false);
   const [showBalance, setShowBalance] = useState<Record<string, boolean>>({});
   const [editingCard, setEditingCard] = useState<Card | null>(null);
-  const [newCard, setNewCard] = useState<Partial<Card>>({
-    name: "",
-    bank: "",
-    limit: 0,
-    closingDay: 1,
-    dueDay: 10,
-  });
+  const [newCard, setNewCard] = useState<Partial<Card>>(defaultForm);
 
-  // Agrupar transações por cartão
+  const monthLabel = useMemo(() => currentMonthLabel(), []);
+
   const cardsSummary = useMemo(() => {
     try {
       const cardGroups: Record<string, Transaction[]> = {};
-      
-      console.log("🔍 Analisando transações para cartões:", {
-        totalTransactions: transactions.length,
-        cards: cards.map(c => ({ id: c.id, name: c.name }))
-      });
-      
-      // Agrupar transações por account (ID do cartão) em vez de cardName
-      transactions.forEach(transaction => {
-        // Apenas transações de cartão de crédito E que sejam despesas
-        if (transaction.method === "Cartão de Crédito" && transaction.type === "expense") {
+
+      transactions.forEach((transaction) => {
+        if (
+          transaction.method === "Cartão de Crédito" &&
+          transaction.type === "expense"
+        ) {
           const accountId = transaction.account;
-          console.log(`💳 Transação de cartão (despesa): "${transaction.description}"`, {
-            account: accountId,
-            cardName: transaction.cardName,
-            type: transaction.type,
-            amount: transaction.amount,
-            status: transaction.status
-          });
-          
           if (!cardGroups[accountId]) {
             cardGroups[accountId] = [];
           }
           cardGroups[accountId].push(transaction);
-        } else if (transaction.method === "Cartão de Crédito" && transaction.type === "income") {
-          console.log(`💰 Ignorando receita de cartão: "${transaction.description}"`, {
-            account: transaction.account,
-            amount: transaction.amount
-          });
         }
       });
 
-      console.log("📊 Grupos de transações por cartão (apenas despesas):", cardGroups);
-
-      // Calcular resumo para cada cartão
-      const summaries: CardSummary[] = cards.map(card => {
+      const summaries: CardSummary[] = cards.map((card) => {
         const cardTransactions = cardGroups[card.id] || [];
-        
-        console.log(`🔍 Analisando cartão "${card.name}" (ID: ${card.id}):`, {
-          totalTransactions: cardTransactions.length,
-          transactions: cardTransactions.map(t => ({
-            description: t.description,
-            type: t.type,
-            amount: t.amount,
-            status: t.status
-          }))
-        });
-        
-        // Apenas despesas (todas já são despesas, mas vamos garantir)
-        const expenses = cardTransactions.filter(t => t.type === "expense");
-        const pending = cardTransactions.filter(t => t.status === "pending");
+        const inMonth = (t: Transaction) => isDateInCurrentMonth(t.date);
+        const expenses = cardTransactions.filter(
+          (t) => t.type === "expense" && inMonth(t),
+        );
+        const pending = cardTransactions.filter(
+          (t) => t.status === "pending" && inMonth(t),
+        );
 
-        const totalSpent = expenses.reduce((sum, t) => sum + (t.amount || 0), 0);
+        const fromTx = expenses.reduce((sum, t) => sum + (t.amount || 0), 0);
+        const fromSubTx = expenses
+          .filter((t) => t.description?.startsWith("Assinatura:"))
+          .reduce((sum, t) => sum + (t.amount || 0), 0);
+        const subsTotal = subscriptions
+          .filter((s) => s.cardId === card.id)
+          .reduce((sum, s) => sum + s.amount, 0);
+
+        const totalSpent = fromTx + Math.max(0, subsTotal - fromSubTx);
         const pendingAmount = pending.reduce((sum, t) => sum + (t.amount || 0), 0);
-        
-        // Cálculo sem considerar receitas
-        const availableLimit = (card.limit || 0) - totalSpent;
-        const utilizationRate = card.limit > 0 ? (totalSpent / card.limit) * 100 : 0;
 
-        console.log(`💰 Resumo do cartão "${card.name}":`, {
-          totalSpent,
-          pendingAmount,
-          availableLimit,
-          utilizationRate,
-          expensesCount: expenses.length,
-          pendingCount: pending.length,
-          completedCount: expenses.filter(t => t.status === "completed").length
-        });
+        const usedOnCard =
+          typeof card.currentBalance === "number" ? card.currentBalance : totalSpent;
+        const availableLimit = Math.max(0, (card.limit || 0) - usedOnCard);
+        const utilizationRate =
+          card.limit > 0 ? (usedOnCard / card.limit) * 100 : 0;
+
+        const txCountMonth = cardTransactions.filter(inMonth).length;
 
         return {
           card,
           totalSpent,
-          totalReceived: 0, // Ignorar receitas
+          totalReceived: 0,
           pendingAmount,
           availableLimit,
           utilizationRate,
-          transactionCount: cardTransactions.length,
-          currentInvoice: totalSpent, // Apenas despesas na fatura atual
-          nextInvoice: pendingAmount, // Apenas despesas pendentes
+          transactionCount: txCountMonth,
+          currentInvoice: totalSpent,
+          nextInvoice: pendingAmount,
         };
       });
 
@@ -142,7 +208,7 @@ const CardsDashboardPage: React.FC<CardsDashboardPageProps> = ({
       console.error("Erro ao calcular resumo dos cartões:", error);
       return [];
     }
-  }, [cards, transactions]);
+  }, [cards, transactions, subscriptions]);
 
   const formatCurrency = (value: number | undefined | null) => {
     if (value === undefined || value === null || isNaN(value)) {
@@ -155,396 +221,563 @@ const CardsDashboardPage: React.FC<CardsDashboardPageProps> = ({
   };
 
   const getUtilizationColor = (rate: number) => {
-    if (rate >= 90) return "text-red-600";
-    if (rate >= 70) return "text-orange-600";
-    if (rate >= 50) return "text-yellow-600";
-    return "text-green-600";
+    if (rate >= 90) return "var(--danger)";
+    if (rate >= 70) return "var(--warning)";
+    return "var(--primary)";
   };
 
-  const getBankIcon = (bank: string) => {
-    const icons: Record<string, string> = {
-      "Nubank": "🟣",
-      "Banco do Brasil": "🟦",
-      "Itaú": "🟠",
-      "Santander": "🔴",
-      "Bradesco": "🟪",
-      "Caixa": "⬜",
-      "Banco Inter": "🟩",
-      "Banco Original": "🟨",
-      "C6 Bank": "🟧",
-      "PicPay": "⬛",
-    };
-    return icons[bank] || "💳";
-  };
+  const closeModal = useCallback(() => {
+    setShowModal(false);
+    setEditingCard(null);
+    setNewCard(defaultForm());
+  }, []);
 
-  const handleAddCard = () => {
-    if (newCard.name && newCard.bank && (newCard.limit || 0) > 0) {
-      onAddCard({
-        name: newCard.name,
-        bank: newCard.bank,
-        limit: newCard.limit || 0,
-        closingDay: newCard.closingDay || 1,
-        dueDay: newCard.dueDay || 10,
-        currentBalance: 0,
-        status: 'active',
-      });
-      setNewCard({
-        name: "",
-        bank: "",
-        limit: 0,
-        closingDay: 1,
-        dueDay: 10,
-      });
-      setShowAddModal(false);
-    }
-  };
-
-  const handleEditCard = () => {
-    if (editingCard && newCard.name && newCard.bank && (newCard.limit || 0) > 0) {
-      onEditCard({
-        ...editingCard,
-        name: newCard.name,
-        bank: newCard.bank,
-        limit: newCard.limit || 0,
-        closingDay: newCard.closingDay || 1,
-        dueDay: newCard.dueDay || 10,
-      });
-      setEditingCard(null);
-      setNewCard({
-        name: "",
-        bank: "",
-        limit: 0,
-        closingDay: 1,
-        dueDay: 10,
-      });
-    }
-  };
-
-  const toggleBalance = (cardId: string) => {
-    setShowBalance(prev => ({
-      ...prev,
-      [cardId]: !prev[cardId]
-    }));
+  const openAddModal = () => {
+    setEditingCard(null);
+    setNewCard(defaultForm());
+    setShowModal(true);
   };
 
   const startEditCard = (card: Card) => {
     setEditingCard(card);
-    setNewCard(card);
+    const preset = matchPresetByBankLabel(card.bank);
+    setNewCard({
+      name: card.name,
+      bank: preset.label,
+      limit: card.limit,
+      closingDay: card.closingDay,
+      dueDay: card.dueDay,
+    });
+    setShowModal(true);
   };
 
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const name = (newCard.name || "").trim();
+    const bank = (newCard.bank || "").trim();
+    const limit = Number(newCard.limit) || 0;
+    const closingDay = Number(newCard.closingDay) || 1;
+    const dueDay = Number(newCard.dueDay) || 10;
+
+    if (!name || !bank || limit <= 0) return;
+
+    try {
+      if (editingCard) {
+        await Promise.resolve(
+          onEditCard({
+            ...editingCard,
+            name,
+            bank,
+            limit,
+            closingDay,
+            dueDay,
+          }),
+        );
+      } else {
+        await Promise.resolve(
+          onAddCard({
+            name,
+            bank,
+            limit,
+            closingDay,
+            dueDay,
+            currentBalance: 0,
+            status: "active",
+          }),
+        );
+      }
+      closeModal();
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const toggleBalance = (cardId: string) => {
+    setShowBalance((prev) => ({ ...prev, [cardId]: !prev[cardId] }));
+  };
+
+  const inputBase: React.CSSProperties = {
+    backgroundColor: "var(--input-bg)",
+    borderColor: "var(--input-border)",
+    color: "var(--text)",
+    borderWidth: 1,
+    borderStyle: "solid",
+  };
+
+  const modalOpen = showModal;
+
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <CreditCard className="w-8 h-8 text-blue-600" />
-          <h1 className="text-3xl font-bold text-gray-900">Cartões de Crédito</h1>
+    <div className="space-y-8 max-w-7xl mx-auto pb-10">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h1
+            className="text-2xl font-semibold tracking-tight"
+            style={{ color: "var(--text)" }}
+          >
+            Meus Cartões
+          </h1>
+          <p className="text-sm mt-1" style={{ color: "var(--text-secondary)" }}>
+            Gerencie seus limites e faturas em um só lugar.
+          </p>
         </div>
         <button
-          onClick={() => setShowAddModal(true)}
-          className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+          type="button"
+          onClick={openAddModal}
+          className="flex items-center justify-center gap-2 px-5 py-2.5 text-white text-sm font-medium rounded-lg transition-all shadow-sm"
+          style={{ backgroundColor: "var(--primary)" }}
         >
-          <Plus className="w-5 h-5" />
-          Adicionar Cartão
+          <Plus className="w-4 h-4" />
+          Novo Cartão
         </button>
       </div>
 
-      {/* Resumo Geral */}
-      <div className="bg-white rounded-xl shadow-lg p-6 border border-gray-200">
-        <h2 className="text-xl font-semibold text-gray-900 mb-4">Resumo Geral</h2>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <div className="text-center">
-            <p className="text-sm text-gray-600 mb-1">Limite Total</p>
-            <p className="text-2xl font-bold text-blue-600">
-              {formatCurrency(cards.reduce((sum, card) => sum + card.limit, 0))}
-            </p>
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <div
+          className="p-5 rounded-xl border"
+          style={{ backgroundColor: "var(--card)", borderColor: "var(--border)" }}
+        >
+          <div
+            className="flex items-center gap-2 mb-2 opacity-80"
+            style={{ color: "var(--text-secondary)" }}
+          >
+            <Wallet className="w-4 h-4" />
+            <span className="text-sm font-medium">Limite Total</span>
           </div>
-          <div className="text-center">
-            <p className="text-sm text-gray-600 mb-1">Fatura Atual</p>
-            <p className="text-2xl font-bold text-red-600">
-              {formatCurrency(cardsSummary.reduce((sum, summary) => sum + summary.currentInvoice, 0))}
-            </p>
+          <p className="text-2xl font-semibold" style={{ color: "var(--text)" }}>
+            {formatCurrency(cards.reduce((sum, card) => sum + card.limit, 0))}
+          </p>
+        </div>
+        <div
+          className="p-5 rounded-xl border"
+          style={{ backgroundColor: "var(--card)", borderColor: "var(--border)" }}
+        >
+          <div
+            className="flex items-center gap-2 mb-2 opacity-80"
+            style={{ color: "var(--text-secondary)" }}
+          >
+            <TrendingDown className="w-4 h-4" />
+            <span className="text-sm font-medium">Movimentação do mês</span>
           </div>
-          <div className="text-center">
-            <p className="text-sm text-gray-600 mb-1">Próxima Fatura</p>
-            <p className="text-2xl font-bold text-orange-600">
-              {formatCurrency(cardsSummary.reduce((sum, summary) => sum + summary.nextInvoice, 0))}
-            </p>
+          <p className="text-2xl font-semibold" style={{ color: "var(--danger)" }}>
+            {formatCurrency(
+              cardsSummary.reduce((sum, s) => sum + s.currentInvoice, 0),
+            )}
+          </p>
+        </div>
+        <div
+          className="p-5 rounded-xl border"
+          style={{ backgroundColor: "var(--card)", borderColor: "var(--border)" }}
+        >
+          <div
+            className="flex items-center gap-2 mb-2 opacity-80"
+            style={{ color: "var(--text-secondary)" }}
+          >
+            <AlertCircle className="w-4 h-4" />
+            <span className="text-sm font-medium">Próximas Faturas</span>
           </div>
-          <div className="text-center">
-            <p className="text-sm text-gray-600 mb-1">Disponível</p>
-            <p className="text-2xl font-bold text-green-600">
-              {formatCurrency(cardsSummary.reduce((sum, summary) => sum + summary.availableLimit, 0))}
-            </p>
+          <p className="text-2xl font-semibold" style={{ color: "var(--warning)" }}>
+            {formatCurrency(
+              cardsSummary.reduce((sum, s) => sum + s.nextInvoice, 0),
+            )}
+          </p>
+        </div>
+        <div
+          className="p-5 rounded-xl border"
+          style={{ backgroundColor: "var(--card)", borderColor: "var(--border)" }}
+        >
+          <div
+            className="flex items-center gap-2 mb-2 opacity-80"
+            style={{ color: "var(--text-secondary)" }}
+          >
+            <CreditCard className="w-4 h-4" />
+            <span className="text-sm font-medium">Limite Disponível</span>
           </div>
+          <p className="text-2xl font-semibold" style={{ color: "var(--primary)" }}>
+            {formatCurrency(
+              cardsSummary.reduce((sum, s) => sum + s.availableLimit, 0),
+            )}
+          </p>
         </div>
       </div>
 
-      {/* Cartões */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {cardsSummary.map((summary) => (
           <div
             key={summary.card.id}
-            className="bg-white rounded-xl shadow-lg overflow-hidden border border-gray-200 hover:shadow-xl transition-all"
+            className="group relative rounded-2xl p-6 transition-all duration-300"
+            style={{
+              backgroundColor: "var(--card)",
+              border: "1px solid var(--border)",
+            }}
           >
-            {/* Header do Cartão */}
-            <div
-              className="p-6 text-white relative"
-              style={{ backgroundColor: "#3b82f6" }}
-            >
-              <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center gap-3">
-                  <span className="text-2xl">{getBankIcon(summary.card.bank)}</span>
-                  <div>
-                    <h3 className="text-lg font-semibold">{summary.card.name}</h3>
-                    <p className="text-sm opacity-90">{summary.card.bank}</p>
-                  </div>
-                </div>
-                <div className="flex gap-2">
-                  <button
-                    onClick={() => startEditCard(summary.card)}
-                    className="p-1 hover:bg-white/20 rounded transition-colors"
-                  >
-                    <Edit2 className="w-4 h-4" />
-                  </button>
-                  <button
-                    onClick={() => onDeleteCard(summary.card.id)}
-                    className="p-1 hover:bg-white/20 rounded transition-colors"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
-                </div>
-              </div>
-
-              {/* Informações do Cartão */}
-              <div className="space-y-2">
-                <div className="flex justify-between">
-                  <span className="text-sm opacity-90">Limite:</span>
-                  <span className="font-semibold">{formatCurrency(summary.card.limit)}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-sm opacity-90">Disponível:</span>
-                  <span className="font-semibold">{formatCurrency(summary.availableLimit)}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-sm opacity-90">Utilização:</span>
-                  <span className={`font-semibold ${getUtilizationColor(summary.utilizationRate)}`}>
-                    {summary.utilizationRate.toFixed(1)}%
-                  </span>
-                </div>
-              </div>
-
-              {/* Barra de Utilização */}
-              <div className="mt-4">
-                <div className="w-full bg-white/30 rounded-full h-2">
-                  <div
-                    className={`h-2 rounded-full transition-all ${
-                      summary.utilizationRate >= 90 ? 'bg-red-500' :
-                      summary.utilizationRate >= 70 ? 'bg-orange-500' :
-                      summary.utilizationRate >= 50 ? 'bg-yellow-500' : 'bg-green-500'
-                    }`}
-                    style={{ width: `${Math.min(summary.utilizationRate, 100)}%` }}
-                  />
-                </div>
+            <div className="relative mb-6">
+              <CreditCardPlastic
+                bankLabel={summary.card.bank || "Outro"}
+                cardName={summary.card.name}
+              />
+              <div className="absolute top-3 right-3 flex gap-1 z-[2]">
+                <button
+                  type="button"
+                  onClick={() => startEditCard(summary.card)}
+                  className="p-2 rounded-lg backdrop-blur-md transition-colors"
+                  style={{
+                    backgroundColor: "rgba(0,0,0,0.25)",
+                    color: "#fff",
+                  }}
+                  title="Editar"
+                >
+                  <Edit2 className="w-4 h-4" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => onDeleteCard(summary.card.id)}
+                  className="p-2 rounded-lg backdrop-blur-md transition-colors"
+                  style={{
+                    backgroundColor: "rgba(0,0,0,0.25)",
+                    color: "#fff",
+                  }}
+                  title="Excluir"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>
               </div>
             </div>
 
-            {/* Detalhes */}
-            <div className="p-6 space-y-4">
-              {/* Fatura Atual */}
-              <div className="flex items-center justify-between p-3 bg-red-50 rounded-lg">
-                <div className="flex items-center gap-2">
-                  <TrendingDown className="w-4 h-4 text-red-600" />
-                  <span className="text-sm font-medium text-red-600">Fatura Atual</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={() => toggleBalance(summary.card.id)}
-                    className="p-1 hover:bg-red-100 rounded transition-colors"
+            <div className="space-y-5">
+              <div>
+                <div className="flex justify-between items-end mb-2">
+                  <span
+                    className="text-sm font-medium"
+                    style={{ color: "var(--text-secondary)" }}
                   >
-                    {showBalance[summary.card.id] ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
-                  </button>
-                  <span className="text-lg font-bold text-red-700">
-                    {showBalance[summary.card.id] ? formatCurrency(summary.currentInvoice) : "•••••"}
+                    Disponível
+                  </span>
+                  <span
+                    className="text-base font-semibold"
+                    style={{ color: "var(--text)" }}
+                  >
+                    {formatCurrency(summary.availableLimit)}
                   </span>
                 </div>
+                <div
+                  className="w-full rounded-full h-1.5 overflow-hidden"
+                  style={{ backgroundColor: "var(--bg-secondary)" }}
+                >
+                  <div
+                    className="h-full rounded-full transition-all duration-500 ease-out"
+                    style={{
+                      width: `${Math.min(summary.utilizationRate, 100)}%`,
+                      backgroundColor: getUtilizationColor(summary.utilizationRate),
+                    }}
+                  />
+                </div>
+                <div
+                  className="flex justify-between mt-1.5 text-xs"
+                  style={{ color: "var(--text-muted)" }}
+                >
+                  <span>Usado: {summary.utilizationRate.toFixed(1)}%</span>
+                  <span>Total: {formatCurrency(summary.card.limit)}</span>
+                </div>
               </div>
 
-              {/* Próxima Fatura */}
-              {summary.nextInvoice > 0 && (
-                <div className="flex items-center justify-between p-3 bg-orange-50 rounded-lg">
+              <div className="pt-2 space-y-3">
+                <div
+                  className="flex justify-between items-center pb-3 border-b"
+                  style={{ borderColor: "var(--border)" }}
+                >
                   <div className="flex items-center gap-2">
-                    <AlertCircle className="w-4 h-4 text-orange-600" />
-                    <span className="text-sm font-medium text-orange-600">Próxima Fatura</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <button
-                      onClick={() => toggleBalance(summary.card.id)}
-                      className="p-1 hover:bg-orange-100 rounded transition-colors"
-                    >
-                      {showBalance[summary.card.id] ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
-                    </button>
-                    <span className="text-lg font-bold text-orange-700">
-                      {showBalance[summary.card.id] ? formatCurrency(summary.nextInvoice) : "•••••"}
+                    <TrendingDown className="w-4 h-4" style={{ color: "var(--danger)" }} />
+                    <span className="text-sm font-medium" style={{ color: "var(--text)" }}>
+                      Movimentação {monthLabel}
                     </span>
                   </div>
+                  <div className="flex items-center gap-2">
+                    <span
+                      className="text-sm font-semibold"
+                      style={{ color: "var(--danger)" }}
+                    >
+                      {showBalance[summary.card.id]
+                        ? formatCurrency(summary.currentInvoice)
+                        : "R$ •••••"}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => toggleBalance(summary.card.id)}
+                      className="p-1 rounded transition-colors"
+                      style={{ color: "var(--text-muted)" }}
+                    >
+                      {showBalance[summary.card.id] ? (
+                        <EyeOff className="w-3.5 h-3.5" />
+                      ) : (
+                        <Eye className="w-3.5 h-3.5" />
+                      )}
+                    </button>
+                  </div>
                 </div>
-              )}
 
-              {/* Datas */}
-              <div className="grid grid-cols-2 gap-4 text-sm">
-                <div className="text-center p-2 bg-gray-50 rounded">
-                  <p className="text-gray-600">Fechamento</p>
-                  <p className="font-semibold">{summary.card.closingDay}</p>
-                </div>
-                <div className="text-center p-2 bg-gray-50 rounded">
-                  <p className="text-gray-600">Vencimento</p>
-                  <p className="font-semibold">{summary.card.dueDay}</p>
-                </div>
+                {summary.nextInvoice > 0 && (
+                  <div
+                    className="flex justify-between items-center pb-3 border-b"
+                    style={{ borderColor: "var(--border)" }}
+                  >
+                    <div className="flex items-center gap-2">
+                      <AlertCircle className="w-4 h-4" style={{ color: "var(--warning)" }} />
+                      <span className="text-sm font-medium" style={{ color: "var(--text)" }}>
+                        Próxima Fatura
+                      </span>
+                    </div>
+                    <span
+                      className="text-sm font-semibold pr-8"
+                      style={{ color: "var(--warning)" }}
+                    >
+                      {showBalance[summary.card.id]
+                        ? formatCurrency(summary.nextInvoice)
+                        : "R$ •••••"}
+                    </span>
+                  </div>
+                )}
               </div>
 
-              {/* Estatísticas */}
-              <div className="text-center p-2 bg-gray-50 rounded">
-                <p className="text-xs text-gray-600">
-                  {summary.transactionCount} transações • {summary.pendingAmount > 0 ? `${summary.pendingAmount} pendentes` : "em dia"}
-                </p>
+              <div
+                className="flex justify-between items-center pt-2 text-xs font-medium"
+                style={{ color: "var(--text-secondary)" }}
+              >
+                <div className="flex items-center gap-1.5">
+                  <span
+                    className="w-1.5 h-1.5 rounded-full"
+                    style={{ backgroundColor: "var(--text-muted)" }}
+                  />
+                  Fecha dia {summary.card.closingDay}
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <span
+                    className="w-1.5 h-1.5 rounded-full"
+                    style={{ backgroundColor: "var(--danger)" }}
+                  />
+                  Vence dia {summary.card.dueDay}
+                </div>
               </div>
             </div>
           </div>
         ))}
       </div>
 
-      {/* Sem Cartões */}
       {cards.length === 0 && (
-        <div className="text-center py-12 bg-white rounded-xl shadow-lg border border-gray-200">
-          <CreditCard className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-          <h3 className="text-xl font-semibold text-gray-900 mb-2">Nenhum cartão cadastrado</h3>
-          <p className="text-gray-600 mb-6">
-            Adicione seu primeiro cartão para começar a controlar suas despesas
+        <div
+          className="flex flex-col items-center justify-center py-20 rounded-2xl border border-dashed"
+          style={{ backgroundColor: "var(--card)", borderColor: "var(--border)" }}
+        >
+          <div
+            className="w-16 h-16 rounded-full flex items-center justify-center mb-4"
+            style={{ backgroundColor: "var(--bg-secondary)" }}
+          >
+            <CreditCard className="w-8 h-8 opacity-50" style={{ color: "var(--text-secondary)" }} />
+          </div>
+          <h3 className="text-lg font-semibold mb-1" style={{ color: "var(--text)" }}>
+            Nenhum cartão encontrado
+          </h3>
+          <p
+            className="text-sm mb-6 max-w-sm text-center"
+            style={{ color: "var(--text-secondary)" }}
+          >
+            Adicione seu primeiro cartão de crédito para começar a monitorar seus limites e
+            gastos mensais.
           </p>
           <button
-            onClick={() => setShowAddModal(true)}
-            className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+            type="button"
+            onClick={openAddModal}
+            className="flex items-center gap-2 px-6 py-2.5 text-white text-sm font-medium rounded-lg transition-all"
+            style={{ backgroundColor: "var(--primary)" }}
           >
+            <Plus className="w-4 h-4" />
             Adicionar Cartão
           </button>
         </div>
       )}
 
-      {/* Modal Adicionar/Editar Cartão */}
-      {(showAddModal || editingCard) && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-xl p-6 w-full max-w-md">
-            <h2 className="text-xl font-bold text-gray-900 mb-4">
-              {editingCard ? "Editar Cartão" : "Adicionar Cartão"}
-            </h2>
-            
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Nome do Cartão
-                </label>
-                <input
-                  type="text"
-                  value={newCard.name}
-                  onChange={(e) => setNewCard({ ...newCard, name: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  placeholder="Ex: Nubank Ultimato"
-                />
-              </div>
+      {modalOpen && (
+        <Portal>
+          <div
+            className="fixed inset-0 flex items-center justify-center p-4 overflow-y-auto"
+            style={{ backgroundColor: "var(--overlay)" }}
+            onClick={(e) => e.target === e.currentTarget && closeModal()}
+          >
+            <div
+              className="rounded-2xl w-full max-w-lg relative max-h-[90vh] overflow-y-auto"
+              style={{
+                backgroundColor: "var(--card)",
+                boxShadow: "var(--shadow)",
+                border: "1px solid var(--border)",
+              }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <button
+                type="button"
+                onClick={closeModal}
+                className="absolute top-4 right-4 p-2 rounded-lg z-10"
+                style={{ color: "var(--text-muted)" }}
+                aria-label="Fechar"
+              >
+                <X className="w-5 h-5" />
+              </button>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Banco
-                </label>
-                <select
-                  value={newCard.bank}
-                  onChange={(e) => setNewCard({ ...newCard, bank: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                >
-                  <option value="">Selecione...</option>
-                  <option value="Nubank">Nubank</option>
-                  <option value="Banco do Brasil">Banco do Brasil</option>
-                  <option value="Itaú">Itaú</option>
-                  <option value="Santander">Santander</option>
-                  <option value="Bradesco">Bradesco</option>
-                  <option value="Caixa">Caixa</option>
-                  <option value="Banco Inter">Banco Inter</option>
-                  <option value="Banco Original">Banco Original</option>
-                  <option value="C6 Bank">C6 Bank</option>
-                  <option value="PicPay">PicPay</option>
-                </select>
-              </div>
+              <div className="p-6 sm:p-8">
+                <h2 className="text-xl font-bold mb-2" style={{ color: "var(--text)" }}>
+                  {editingCard ? "Editar cartão" : "Novo cartão"}
+                </h2>
+                <p className="text-sm mb-6" style={{ color: "var(--text-secondary)" }}>
+                  Escolha o banco para aplicar o visual do plástico. O nome é só para você
+                  identificar o cartão.
+                </p>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Limite
-                </label>
-                <input
-                  type="number"
-                  value={newCard.limit}
-                  onChange={(e) => setNewCard({ ...newCard, limit: parseFloat(e.target.value) || 0 })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  placeholder="0,00"
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Dia Fechamento
-                  </label>
-                  <input
-                    type="number"
-                    min="1"
-                    max="31"
-                    value={newCard.closingDay}
-                    onChange={(e) => setNewCard({ ...newCard, closingDay: parseInt(e.target.value) || 1 })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                <div className="mb-6">
+                  <CreditCardPlastic
+                    bankLabel={newCard.bank || "Outro"}
+                    cardName={newCard.name || "Nome do cartão"}
                   />
                 </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Dia Vencimento
-                  </label>
-                  <input
-                    type="number"
-                    min="1"
-                    max="31"
-                    value={newCard.dueDay}
-                    onChange={(e) => setNewCard({ ...newCard, dueDay: parseInt(e.target.value) || 10 })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                </div>
-              </div>
-            </div>
 
-            <div className="flex gap-3 mt-6">
-              <button
-                onClick={() => {
-                  setShowAddModal(false);
-                  setEditingCard(null);
-                  setNewCard({
-                    name: "",
-                    bank: "",
-                    limit: 0,
-                    closingDay: 1,
-                    dueDay: 10,
-                  });
-                }}
-                className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
-              >
-                Cancelar
-              </button>
-              <button
-                onClick={editingCard ? handleEditCard : handleAddCard}
-                className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-              >
-                {editingCard ? "Salvar" : "Adicionar"}
-              </button>
+                <form onSubmit={handleSubmit} className="space-y-4">
+                  <div>
+                    <label
+                      className="block text-xs font-bold uppercase mb-1.5"
+                      style={{ color: "var(--text-muted)" }}
+                    >
+                      Banco / estilo do cartão
+                    </label>
+                    <select
+                      value={newCard.bank || "Outro"}
+                      onChange={(e) =>
+                        setNewCard((prev) => ({ ...prev, bank: e.target.value }))
+                      }
+                      className="w-full px-4 py-3 rounded-xl outline-none"
+                      style={inputBase}
+                      required
+                    >
+                      {CARD_BRAND_PRESETS.map((p) => (
+                        <option key={p.id} value={p.label}>
+                          {p.label}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label
+                      className="block text-xs font-bold uppercase mb-1.5"
+                      style={{ color: "var(--text-muted)" }}
+                    >
+                      Nome do cartão
+                    </label>
+                    <input
+                      type="text"
+                      value={newCard.name || ""}
+                      onChange={(e) =>
+                        setNewCard((prev) => ({ ...prev, name: e.target.value }))
+                      }
+                      className="w-full px-4 py-3 rounded-xl outline-none"
+                      style={inputBase}
+                      placeholder="Ex.: Visa Platinum, Roxinho"
+                      required
+                    />
+                  </div>
+
+                  <div>
+                    <label
+                      className="block text-xs font-bold uppercase mb-1.5"
+                      style={{ color: "var(--text-muted)" }}
+                    >
+                      Limite total
+                    </label>
+                    <input
+                      type="number"
+                      min={1}
+                      step="0.01"
+                      value={newCard.limit === 0 ? "" : newCard.limit}
+                      onChange={(e) =>
+                        setNewCard((prev) => ({
+                          ...prev,
+                          limit: parseFloat(e.target.value) || 0,
+                        }))
+                      }
+                      className="w-full px-4 py-3 rounded-xl outline-none"
+                      style={inputBase}
+                      placeholder="0,00"
+                      required
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label
+                        className="block text-xs font-bold uppercase mb-1.5"
+                        style={{ color: "var(--text-muted)" }}
+                      >
+                        Fechamento
+                      </label>
+                      <input
+                        type="number"
+                        min={1}
+                        max={31}
+                        value={newCard.closingDay ?? 1}
+                        onChange={(e) =>
+                          setNewCard((prev) => ({
+                            ...prev,
+                            closingDay: parseInt(e.target.value, 10) || 1,
+                          }))
+                        }
+                        className="w-full px-4 py-3 rounded-xl outline-none"
+                        style={inputBase}
+                        required
+                      />
+                    </div>
+                    <div>
+                      <label
+                        className="block text-xs font-bold uppercase mb-1.5"
+                        style={{ color: "var(--text-muted)" }}
+                      >
+                        Vencimento
+                      </label>
+                      <input
+                        type="number"
+                        min={1}
+                        max={31}
+                        value={newCard.dueDay ?? 10}
+                        onChange={(e) =>
+                          setNewCard((prev) => ({
+                            ...prev,
+                            dueDay: parseInt(e.target.value, 10) || 10,
+                          }))
+                        }
+                        className="w-full px-4 py-3 rounded-xl outline-none"
+                        style={inputBase}
+                        required
+                      />
+                    </div>
+                  </div>
+
+                  <div className="flex gap-3 pt-4">
+                    <button
+                      type="button"
+                      onClick={closeModal}
+                      className="flex-1 py-3 font-semibold rounded-xl"
+                      style={{ color: "var(--text-secondary)" }}
+                    >
+                      Cancelar
+                    </button>
+                    <button
+                      type="submit"
+                      className="flex-1 py-3 text-white font-semibold rounded-xl"
+                      style={{ backgroundColor: "var(--primary)" }}
+                    >
+                      {editingCard ? "Salvar" : "Adicionar"}
+                    </button>
+                  </div>
+                </form>
+              </div>
             </div>
           </div>
-        </div>
+        </Portal>
       )}
     </div>
   );

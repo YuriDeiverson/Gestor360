@@ -41,7 +41,6 @@ const GoalCard: React.FC<GoalCardProps> = ({
   const goalImage = getGoalImage(goal.name);
   const goalType = getGoalType(goal.name);
   
-  // Determinar status da meta
   const getGoalStatus = () => {
     if (progress >= 100) return 'completed';
     if (goal.currentAmount === 0) return 'paused';
@@ -50,41 +49,56 @@ const GoalCard: React.FC<GoalCardProps> = ({
   
   const status = getGoalStatus();
   
-  const getStatusInfo = () => {
+  const getStatusStyle = (): React.CSSProperties => {
     switch (status) {
       case 'completed':
-        return { text: 'Concluída', color: 'bg-green-100 text-green-800 border-green-200' };
+        return { backgroundColor: 'var(--success-bg)', color: 'var(--success)', borderColor: 'var(--success)' };
       case 'paused':
-        return { text: 'Pausada', color: 'bg-yellow-100 text-yellow-800 border-yellow-200' };
+        return { backgroundColor: 'var(--warning-bg)', color: 'var(--warning)', borderColor: 'var(--warning)' };
       case 'active':
-        return { text: 'Ativa', color: 'bg-blue-100 text-blue-800 border-blue-200' };
+        return { backgroundColor: 'var(--primary-bg)', color: 'var(--primary)', borderColor: 'var(--primary)' };
       default:
-        return { text: 'Desconhecido', color: 'bg-gray-100 text-gray-800 border-gray-200' };
+        return { backgroundColor: 'var(--bg-secondary)', color: 'var(--text-secondary)', borderColor: 'var(--border)' };
     }
   };
   
-  const statusInfo = getStatusInfo();
+  const getStatusText = () => {
+    switch (status) {
+      case 'completed': return 'Concluída';
+      case 'paused': return 'Pausada';
+      case 'active': return 'Ativa';
+      default: return 'Desconhecido';
+    }
+  };
   
-  // Calcular data de início (estimada como 30 dias antes da data atual ou data de criação)
   const startDate = new Date();
   startDate.setDate(startDate.getDate() - 30);
   const endDate = new Date(goal.deadline);
 
+  const getProgressColor = () => {
+    if (status === 'completed') return 'var(--success)';
+    if (status === 'paused') return 'var(--warning)';
+    return 'var(--primary)';
+  };
+
   return (
-    <div className="bg-white rounded-2xl shadow-lg overflow-hidden transition-all duration-300 hover:shadow-xl hover:scale-[1.02] relative h-80">
-      {/* Imagem de background ocupando todo o card */}
+    <div
+      className="rounded-2xl overflow-hidden transition-all duration-300 hover:scale-[1.02] relative h-80"
+      style={{ backgroundColor: 'var(--card)', boxShadow: 'var(--shadow)' }}
+    >
       <div 
         className="absolute inset-0 bg-cover bg-center bg-no-repeat"
         style={{ backgroundImage: `url(${goalImage})` }}
       />
       
-      {/* Overlay com informações */}
       <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/40 to-transparent p-6 flex flex-col justify-between">
-        {/* Header com status e botões */}
         <div className="flex justify-between items-start">
           <div>
-            <span className={`px-2 py-1 rounded-full text-xs font-semibold border ${statusInfo.color}`}>
-              {statusInfo.text}
+            <span
+              className="px-2 py-1 rounded-full text-xs font-semibold border"
+              style={getStatusStyle()}
+            >
+              {getStatusText()}
             </span>
           </div>
           <div className="flex gap-1">
@@ -105,14 +119,12 @@ const GoalCard: React.FC<GoalCardProps> = ({
           </div>
         </div>
 
-        {/* Conteúdo principal */}
         <div className="space-y-4">
           <div>
             <h3 className="text-white text-xl font-bold mb-1 drop-shadow-lg">{goal.name}</h3>
             <p className="text-white/90 text-sm">{goalType}</p>
           </div>
 
-          {/* Progresso */}
           <div>
             <div className="flex justify-between text-sm mb-2">
               <span className="text-white/80">Progresso</span>
@@ -120,12 +132,8 @@ const GoalCard: React.FC<GoalCardProps> = ({
             </div>
             <div className="w-full bg-white/20 rounded-full h-2 backdrop-blur-sm">
               <div
-                className={`h-2 rounded-full transition-all duration-500 ${
-                  status === 'completed' ? 'bg-green-400' : 
-                  status === 'paused' ? 'bg-yellow-400' : 
-                  'bg-blue-400'
-                }`}
-                style={{ width: `${progress}%` }}
+                className="h-2 rounded-full transition-all duration-500"
+                style={{ width: `${progress}%`, backgroundColor: getProgressColor() }}
               />
             </div>
             <div className="flex justify-between text-sm mt-2">
@@ -138,30 +146,34 @@ const GoalCard: React.FC<GoalCardProps> = ({
             </div>
           </div>
 
-          {/* Datas */}
           <div className="flex justify-between text-sm text-white/80 mb-4">
             <span>Início: {startDate.toLocaleDateString('pt-BR')}</span>
             <span>Término: {endDate.toLocaleDateString('pt-BR')}</span>
           </div>
 
-          {/* Ações */}
           <div className="flex flex-col gap-2">
             <div className="flex gap-2">
               <button
                 onClick={() => onAddFundsClick(goal)}
-                className="flex-1 px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors font-semibold text-sm"
+                className="flex-1 px-4 py-2 text-white rounded-lg transition-colors font-semibold text-sm"
+                style={{ backgroundColor: 'var(--primary)' }}
+                onMouseEnter={(e) => { e.currentTarget.style.filter = 'brightness(0.85)'; }}
+                onMouseLeave={(e) => { e.currentTarget.style.filter = ''; }}
               >
                 Adicionar
               </button>
               
               {goal.currentAmount > 0 && (
                 <>
-                  <div className="flex items-center text-gray-400">
+                  <div className="flex items-center" style={{ color: 'var(--text-muted)' }}>
                     -
                   </div>
                   <button
                     onClick={() => onWithdrawFundsClick(goal)}
-                    className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors font-semibold text-sm"
+                    className="flex-1 px-4 py-2 text-white rounded-lg transition-colors font-semibold text-sm"
+                    style={{ backgroundColor: 'var(--danger)' }}
+                    onMouseEnter={(e) => { e.currentTarget.style.filter = 'brightness(0.85)'; }}
+                    onMouseLeave={(e) => { e.currentTarget.style.filter = ''; }}
                   >
                     Retirar
                   </button>
@@ -170,8 +182,11 @@ const GoalCard: React.FC<GoalCardProps> = ({
             </div>
             
             {status === 'completed' && (
-              <div className="mt-3 p-2 bg-green-50 border border-green-200 rounded-lg">
-                <p className="text-xs text-green-800">🎉 Parabéns! Meta concluída!</p>
+              <div
+                className="mt-3 p-2 rounded-lg"
+                style={{ backgroundColor: 'var(--success-bg)', border: '1px solid var(--success)' }}
+              >
+                <p className="text-xs" style={{ color: 'var(--success)' }}>🎉 Parabéns! Meta concluída!</p>
               </div>
             )}
           </div>
@@ -192,7 +207,6 @@ interface GoalsPageProps {
   categories: any[];
 }
 
-// Função para converter Meta para Goal
 const convertMetaToGoal = (meta: Meta): Goal => ({
   id: meta.id,
   name: meta.name,
@@ -217,7 +231,6 @@ const GoalsPage: React.FC<GoalsPageProps> = ({
   const [editingGoal, setEditingGoal] = useState<Goal | null>(null);
   const [selectedGoalForWithdraw, setSelectedGoalForWithdraw] = useState<Goal | null>(null);
   
-  // Converter Meta[] para Goal[]
   const convertedGoals: Goal[] = goals.map(convertMetaToGoal);
 
   const handleAddFunds = (goalId: string, amount: number) => {
@@ -242,30 +255,35 @@ const GoalsPage: React.FC<GoalsPageProps> = ({
   return (
     <div className="space-y-8">
       <div className="flex justify-between items-center">
-        <h2 className="text-2xl font-semibold text-gray-900">
+        <h2 className="text-2xl font-semibold" style={{ color: 'var(--text)' }}>
           Metas financeiras
         </h2>
         <button
           onClick={() => setAddGoalModalOpen(true)}
-          className="px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors font-semibold"
+          className="px-4 py-2 text-white rounded-lg transition-colors font-semibold"
+          style={{ backgroundColor: 'var(--primary)' }}
+          onMouseEnter={(e) => { e.currentTarget.style.filter = 'brightness(0.85)'; }}
+          onMouseLeave={(e) => { e.currentTarget.style.filter = ''; }}
         >
           Nova meta
         </button>
       </div>
 
-      {/* Mensagem quando não há metas */}
       {convertedGoals.length === 0 ? (
         <div className="text-center py-12">
           <div className="text-6xl mb-4">🎯</div>
-          <h3 className="text-xl font-semibold text-gray-700 mb-2">
+          <h3 className="text-xl font-semibold mb-2" style={{ color: 'var(--text)' }}>
             Nenhuma meta encontrada
           </h3>
-          <p className="text-gray-500 mb-6">
+          <p className="mb-6" style={{ color: 'var(--text-secondary)' }}>
             Crie sua primeira meta para começar a acompanhar seus objetivos financeiros.
           </p>
           <button
             onClick={() => setAddGoalModalOpen(true)}
-            className="px-6 py-3 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors font-semibold"
+            className="px-6 py-3 text-white rounded-lg transition-colors font-semibold"
+            style={{ backgroundColor: 'var(--primary)' }}
+            onMouseEnter={(e) => { e.currentTarget.style.filter = 'brightness(0.85)'; }}
+            onMouseLeave={(e) => { e.currentTarget.style.filter = ''; }}
           >
             Criar Primeira Meta
           </button>

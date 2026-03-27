@@ -44,8 +44,11 @@ const CustomSelect: React.FC<{
   const dropdown =
     coords && isOpen ? (
       <div
-        className="dropdown-filters bg-white rounded-xl border border-gray-200 shadow-lg max-h-56 overflow-y-auto z-50"
+        className="dropdown-filters rounded-xl max-h-56 overflow-y-auto z-50"
         style={{
+          backgroundColor: 'var(--card)',
+          border: '1px solid var(--border)',
+          boxShadow: 'var(--shadow)',
           left: Math.max(
             8,
             Math.min(coords.left, window.innerWidth - coords.width - 8)
@@ -66,11 +69,24 @@ const CustomSelect: React.FC<{
                 onChange(option.value);
                 onToggle();
               }}
-              className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-colors ${
-                value === option.value
-                  ? "bg-emerald-50 text-emerald-700 font-medium"
-                  : "text-gray-700 hover:bg-gray-50"
-              }`}
+              className="w-full text-left px-3 py-2 rounded-lg text-sm transition-colors"
+              style={{
+                backgroundColor:
+                  value === option.value ? 'var(--primary-bg)' : 'transparent',
+                color:
+                  value === option.value ? 'var(--primary)' : 'var(--text)',
+                fontWeight: value === option.value ? 500 : 400,
+              }}
+              onMouseEnter={(e) => {
+                if (value !== option.value) {
+                  e.currentTarget.style.backgroundColor = 'var(--bg-secondary)';
+                }
+              }}
+              onMouseLeave={(e) => {
+                if (value !== option.value) {
+                  e.currentTarget.style.backgroundColor = 'transparent';
+                }
+              }}
             >
               {option.label}
             </button>
@@ -84,7 +100,19 @@ const CustomSelect: React.FC<{
       <button
         ref={buttonRef}
         onClick={onToggle}
-        className="w-full bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-sm flex items-center justify-between hover:bg-gray-100 focus:ring-2 focus:ring-emerald-300"
+        className="w-full rounded-lg px-3 py-2 text-sm flex items-center justify-between focus:ring-2"
+        style={{
+          backgroundColor: 'var(--input-bg)',
+          border: '1px solid var(--input-border)',
+          color: 'var(--text)',
+          '--tw-ring-color': 'var(--primary-light)',
+        } as React.CSSProperties}
+        onMouseEnter={(e) => {
+          e.currentTarget.style.backgroundColor = 'var(--bg-secondary)';
+        }}
+        onMouseLeave={(e) => {
+          e.currentTarget.style.backgroundColor = 'var(--input-bg)';
+        }}
       >
         <span className="truncate">{selectedOption?.label}</span>
         <svg
@@ -132,8 +160,11 @@ const MultiSelectDropdown: React.FC<{
   const dropdown =
     coords && isOpen ? (
       <div
-        className="dropdown-filters bg-white rounded-xl border border-gray-200 shadow-xl max-h-64 overflow-y-auto z-50"
+        className="dropdown-filters rounded-xl max-h-64 overflow-y-auto z-50"
         style={{
+          backgroundColor: 'var(--card)',
+          border: '1px solid var(--border)',
+          boxShadow: 'var(--shadow)',
           left: coords.left,
           top: coords.top,
           width: coords.width,
@@ -149,10 +180,12 @@ const MultiSelectDropdown: React.FC<{
                 onChange(isAllSelected ? [] : options)
               }
             />
-            <span className="text-sm font-medium">Selecionar todos</span>
+            <span className="text-sm font-medium" style={{ color: 'var(--text)' }}>
+              Selecionar todos
+            </span>
           </label>
 
-          <hr className="my-2" />
+          <hr className="my-2" style={{ borderColor: 'var(--border)' }} />
 
           {options.map((option) => (
             <label key={option} className="flex items-center gap-2 px-3 py-2">
@@ -167,7 +200,9 @@ const MultiSelectDropdown: React.FC<{
                   )
                 }
               />
-              <span className="text-sm">{option}</span>
+              <span className="text-sm" style={{ color: 'var(--text)' }}>
+                {option}
+              </span>
             </label>
           ))}
         </div>
@@ -179,7 +214,12 @@ const MultiSelectDropdown: React.FC<{
       <button
         ref={buttonRef}
         onClick={onToggle}
-        className="w-full bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-sm flex justify-between"
+        className="w-full rounded-lg px-3 py-2 text-sm flex justify-between"
+        style={{
+          backgroundColor: 'var(--input-bg)',
+          border: '1px solid var(--input-border)',
+          color: 'var(--text)',
+        }}
       >
         {label} ({selected.length})
         <svg
@@ -227,17 +267,36 @@ const Header: React.FC<HeaderProps> = ({ categories }) => {
   return (
     <header ref={headerRef} className="mb-6">
       {/* HEADER TOP */}
-      <div className="flex items-center justify-between bg-white rounded-2xl border border-gray-200 px-6 py-4 shadow-sm">
+      <div
+        className="flex items-center justify-between rounded-2xl px-6 py-4"
+        style={{
+          backgroundColor: 'var(--card)',
+          border: '1px solid var(--border)',
+          boxShadow: 'var(--shadow-sm)',
+        }}
+      >
         <div>
-          <h1 className="text-xl font-semibold">Dashboard</h1>
-          <p className="text-sm text-gray-500">
+          <h1 className="text-xl font-semibold" style={{ color: 'var(--text)' }}>
+            Dashboard
+          </h1>
+          <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
             Bem-vindo, aqui estão suas finanças
           </p>
         </div>
 
         <button
           onClick={() => setIsFiltersVisible(!isFiltersVisible)}
-          className="p-3 rounded-xl border border-gray-200 hover:bg-gray-50"
+          className="p-3 rounded-xl transition-colors"
+          style={{
+            border: '1px solid var(--border)',
+            color: 'var(--text)',
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.backgroundColor = 'var(--bg-secondary)';
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.backgroundColor = 'transparent';
+          }}
         >
           <svg
             className="w-5 h-5"
@@ -257,7 +316,14 @@ const Header: React.FC<HeaderProps> = ({ categories }) => {
 
       {/* FILTERS */}
       {isFiltersVisible && (
-        <div className="mt-4 bg-white rounded-2xl border border-gray-200 p-6 shadow-sm">
+        <div
+          className="mt-4 rounded-2xl p-6"
+          style={{
+            backgroundColor: 'var(--card)',
+            border: '1px solid var(--border)',
+            boxShadow: 'var(--shadow-sm)',
+          }}
+        >
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
             <DateRangePicker
               startDate={filters.startDate}
@@ -303,11 +369,20 @@ const Header: React.FC<HeaderProps> = ({ categories }) => {
             />
           </div>
 
-          {/* Botão para resetar para o mês atual */}
           <div className="mt-4 flex justify-end">
             <button
               onClick={resetFilters}
-              className="px-4 py-2 text-sm bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors"
+              className="px-4 py-2 text-sm rounded-lg transition-colors"
+              style={{
+                backgroundColor: 'var(--bg-secondary)',
+                color: 'var(--text)',
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.backgroundColor = 'var(--border)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.backgroundColor = 'var(--bg-secondary)';
+              }}
             >
               Mês Atual
             </button>

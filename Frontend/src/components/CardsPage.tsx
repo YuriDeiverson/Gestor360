@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from "react";
-import { Plus, CreditCard, Calendar, AlertCircle } from "lucide-react";
+import React, { useState } from "react";
+import { Plus, CreditCard, Calendar, AlertCircle, Pencil, Trash2, X } from "lucide-react";
 import Portal from "./Portal";
 import { Card } from "../utils/types";
 
@@ -27,51 +27,30 @@ const CardsPage: React.FC<CardsPageProps> = ({
   });
 
   const resetForm = () => {
-    setFormData({
-      name: "",
-      bank: "",
-      limit: "",
-      closingDay: "",
-      dueDay: "",
-    });
+    setFormData({ name: "", bank: "", limit: "", closingDay: "", dueDay: "" });
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    if (!formData.name || !formData.limit || !formData.closingDay || !formData.dueDay) {
-      alert("Preencha todos os campos obrigatórios.");
-      return;
-    }
+    if (!formData.name || !formData.limit || !formData.closingDay || !formData.dueDay) return;
 
     try {
+      const cardData = {
+        name: formData.name,
+        bank: formData.bank || undefined,
+        limit: parseFloat(formData.limit),
+        closingDay: parseInt(formData.closingDay),
+        dueDay: parseInt(formData.dueDay),
+      };
+
       if (editingCard) {
-        await onEditCard({
-          ...editingCard,
-          name: formData.name,
-          bank: formData.bank || undefined,
-          limit: parseFloat(formData.limit),
-          closingDay: parseInt(formData.closingDay),
-          dueDay: parseInt(formData.dueDay),
-        });
+        await onEditCard({ ...editingCard, ...cardData });
       } else {
-        await onAddCard({
-          name: formData.name,
-          bank: formData.bank || undefined,
-          limit: parseFloat(formData.limit),
-          closingDay: parseInt(formData.closingDay),
-          dueDay: parseInt(formData.dueDay),
-          currentBalance: 0,
-          status: "active",
-        });
+        await onAddCard({ ...cardData, currentBalance: 0, status: "active" });
       }
-      
-      setIsModalOpen(false);
-      setEditingCard(null);
-      resetForm();
+      closeModal();
     } catch (error) {
-      console.error("Erro ao salvar cartão:", error);
-      alert("Erro ao salvar cartão. Tente novamente.");
+      console.error(error);
     }
   };
 
@@ -99,32 +78,6 @@ const CardsPage: React.FC<CardsPageProps> = ({
     resetForm();
   };
 
-  const getCardStatusColor = (status: Card["status"]) => {
-    switch (status) {
-      case "active":
-        return "text-green-600 bg-green-100";
-      case "overdue":
-        return "text-red-600 bg-red-100";
-      case "inactive":
-        return "text-gray-600 bg-gray-100";
-      default:
-        return "text-gray-600 bg-gray-100";
-    }
-  };
-
-  const getCardStatusText = (status: Card["status"]) => {
-    switch (status) {
-      case "active":
-        return "Ativo";
-      case "overdue":
-        return "Vencido";
-      case "inactive":
-        return "Inativo";
-      default:
-        return "Desconhecido";
-    }
-  };
-
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat("pt-BR", {
       style: "currency",
@@ -132,232 +85,284 @@ const CardsPage: React.FC<CardsPageProps> = ({
     }).format(value);
   };
 
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString("pt-BR");
-  };
-
   return (
-    <div className="p-6">
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-3xl font-bold text-gray-900 bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent bg-clip-text">
-          Meus Cartões
-        </h1>
+    <div className="min-h-screen p-8" style={{ backgroundColor: 'var(--bg)' }}>
+      {/* Header */}
+      <div className="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-10">
+        <div>
+          <h1
+            className="text-2xl font-semibold tracking-tight"
+            style={{ color: 'var(--text)' }}
+          >
+            Meus Cartões
+          </h1>
+          <p className="text-sm mt-1" style={{ color: 'var(--text-secondary)' }}>
+            Gerencie seus limites e visualize o fechamento de faturas.
+          </p>
+        </div>
         <button
           onClick={openAddModal}
-          className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-xl hover:from-blue-700 hover:to-purple-700 transition-all duration-300 shadow-lg hover:shadow-xl transform hover:scale-105"
+          className="flex items-center gap-2 px-5 py-2.5 text-white rounded-xl transition-all text-sm font-medium"
+          style={{ backgroundColor: 'var(--primary)', boxShadow: 'var(--shadow-sm)' }}
+          onMouseEnter={(e) => { e.currentTarget.style.filter = 'brightness(0.85)'; }}
+          onMouseLeave={(e) => { e.currentTarget.style.filter = ''; }}
         >
-          <Plus className="w-5 h-5" />
-          <span className="font-semibold">Novo Cartão</span>
+          <Plus className="w-4 h-4" />
+          Novo Cartão
         </button>
       </div>
 
       {/* Grid de Cartões */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {cards.map((card) => (
-          <div
-            key={card.id}
-            className="group relative bg-white rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105 border border-gray-200 overflow-hidden"
-          >
-            {/* Header do Cartão */}
-            <div className="bg-gradient-to-r from-blue-500 to-purple-600 p-6 text-white">
-              <div className="flex justify-between items-start mb-4">
-                <div className="flex items-center gap-3">
-                  <CreditCard className="w-8 h-8 text-white" />
+      <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {cards.map((card) => {
+          const usagePercent = Math.min((card.currentBalance / card.limit) * 100, 100);
+          
+          return (
+            <div
+              key={card.id}
+              className="group relative rounded-3xl p-6 transition-all duration-300"
+              style={{ backgroundColor: 'var(--card)', border: '1px solid var(--border-light)', boxShadow: 'var(--shadow-sm)' }}
+              onMouseEnter={(e) => { e.currentTarget.style.boxShadow = 'var(--shadow)'; }}
+              onMouseLeave={(e) => { e.currentTarget.style.boxShadow = 'var(--shadow-sm)'; }}
+            >
+              {/* Top Actions & Icon */}
+              <div className="flex justify-between items-start mb-6">
+                <div
+                  className="w-12 h-12 rounded-2xl flex items-center justify-center"
+                  style={{ backgroundColor: 'var(--bg-secondary)', border: '1px solid var(--border-light)' }}
+                >
+                  <CreditCard className="w-6 h-6" style={{ color: 'var(--text-secondary)' }} />
+                </div>
+                <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <button 
+                    onClick={() => openEditModal(card)}
+                    className="p-2 rounded-lg transition-all"
+                    style={{ color: 'var(--text-muted)' }}
+                    onMouseEnter={(e) => { e.currentTarget.style.color = 'var(--primary)'; e.currentTarget.style.backgroundColor = 'var(--primary-bg)'; }}
+                    onMouseLeave={(e) => { e.currentTarget.style.color = 'var(--text-muted)'; e.currentTarget.style.backgroundColor = ''; }}
+                  >
+                    <Pencil className="w-4 h-4" />
+                  </button>
+                  <button 
+                    onClick={() => onDeleteCard(card.id)}
+                    className="p-2 rounded-lg transition-all"
+                    style={{ color: 'var(--text-muted)' }}
+                    onMouseEnter={(e) => { e.currentTarget.style.color = 'var(--danger)'; e.currentTarget.style.backgroundColor = 'var(--danger-bg)'; }}
+                    onMouseLeave={(e) => { e.currentTarget.style.color = 'var(--text-muted)'; e.currentTarget.style.backgroundColor = ''; }}
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
+
+              {/* Card Info */}
+              <div className="mb-6">
+                <h3 className="text-lg font-bold leading-tight" style={{ color: 'var(--text)' }}>
+                  {card.name}
+                </h3>
+                <span
+                  className="text-xs font-medium uppercase tracking-widest"
+                  style={{ color: 'var(--text-muted)' }}
+                >
+                  {card.bank || "Outros"}
+                </span>
+              </div>
+
+              {/* Progress & Values */}
+              <div className="space-y-4 mb-6">
+                <div className="flex justify-between items-end">
                   <div>
-                    <h3 className="text-xl font-bold">{card.name}</h3>
-                    {card.bank && (
-                      <p className="text-blue-100 text-sm">{card.bank}</p>
-                    )}
+                    <p className="text-[10px] font-bold uppercase" style={{ color: 'var(--text-muted)' }}>Gasto atual</p>
+                    <p
+                      className="text-lg font-bold"
+                      style={{ color: usagePercent > 85 ? 'var(--danger)' : 'var(--text)' }}
+                    >
+                      {formatCurrency(card.currentBalance)}
+                    </p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-[10px] font-bold uppercase" style={{ color: 'var(--text-muted)' }}>Limite</p>
+                    <p className="text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>
+                      {formatCurrency(card.limit)}
+                    </p>
                   </div>
                 </div>
-                <div className="text-right">
-                  <span className={`px-3 py-1 rounded-full text-xs font-medium ${
-                    card.status === "active" 
-                      ? "bg-green-500 text-white" 
-                      : card.status === "overdue"
-                        ? "bg-red-500 text-white"
-                        : "bg-gray-500 text-white"
-                  }`}>
-                    {getCardStatusText(card.status)}
-                  </span>
-                </div>
-              </div>
-            </div>
-
-            {/* Conteúdo do Cartão */}
-            <div className="p-6 space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <p className="text-sm text-gray-600 mb-1">Limite</p>
-                  <p className="text-2xl font-bold text-gray-900">
-                    {formatCurrency(card.limit)}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-sm text-gray-600 mb-1">Saldo Atual</p>
-                  <p className={`text-2xl font-bold ${
-                    card.currentBalance > card.limit * 0.8 
-                      ? "text-red-600" 
-                      : card.currentBalance > card.limit * 0.6
-                        ? "text-yellow-600" 
-                        : "text-green-600"
-                  }`}>
-                    {formatCurrency(card.currentBalance)}
-                  </p>
+                
+                {/* Bar */}
+                <div
+                  className="h-2 w-full rounded-full overflow-hidden"
+                  style={{ backgroundColor: 'var(--bg-secondary)' }}
+                >
+                  <div 
+                    className="h-full transition-all duration-700 ease-out"
+                    style={{
+                      width: `${usagePercent}%`,
+                      backgroundColor: usagePercent > 85 ? 'var(--danger)' : 'var(--primary)',
+                    }}
+                  />
                 </div>
               </div>
 
-              <div className="border-t border-gray-200 pt-4">
-                <p className="text-sm text-gray-600 mb-1">Disponível</p>
-                <p className="text-2xl font-bold text-green-600">
-                  {formatCurrency(card.limit - card.currentBalance)}
-                </p>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
+              {/* Dates Footer */}
+              <div
+                className="grid grid-cols-2 gap-2 pt-5 border-t"
+                style={{ borderColor: 'var(--border-light)' }}
+              >
                 <div className="flex items-center gap-2">
-                  <Calendar className="w-5 h-5 text-gray-600" />
+                  <div
+                    className="p-1.5 rounded-lg"
+                    style={{ backgroundColor: 'var(--bg-secondary)', color: 'var(--text-muted)' }}
+                  >
+                    <Calendar className="w-3.5 h-3.5" />
+                  </div>
                   <div>
-                    <p className="text-sm text-gray-600">Fechamento</p>
-                    <p className="text-lg font-semibold text-gray-900">Dia {card.closingDay}</p>
+                    <p className="text-[10px] font-bold uppercase" style={{ color: 'var(--text-muted)' }}>Fecha</p>
+                    <p className="text-xs font-semibold" style={{ color: 'var(--text)' }}>Dia {card.closingDay}</p>
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
-                  <Calendar className="w-5 h-5 text-gray-600" />
+                  <div
+                    className="p-1.5 rounded-lg"
+                    style={{ backgroundColor: 'var(--bg-secondary)', color: 'var(--text-muted)' }}
+                  >
+                    <Calendar className="w-3.5 h-3.5" />
+                  </div>
                   <div>
-                    <p className="text-sm text-gray-600">Vencimento</p>
-                    <p className="text-lg font-semibold text-gray-900">Dia {card.dueDay}</p>
+                    <p className="text-[10px] font-bold uppercase" style={{ color: 'var(--text-muted)' }}>Vence</p>
+                    <p className="text-xs font-semibold" style={{ color: 'var(--text)' }}>Dia {card.dueDay}</p>
                   </div>
                 </div>
               </div>
 
               {card.nextDueDate && (
-                <div className="mt-4 p-3 bg-orange-50 border border-orange-200 rounded-lg">
-                  <div className="flex items-center gap-2 text-orange-800">
-                    <AlertCircle className="w-5 h-5" />
-                    <p className="text-sm font-medium">Próxima fatura: {new Date(card.nextDueDate).toLocaleDateString('pt-BR')}</p>
-                  </div>
+                <div
+                  className="mt-4 flex items-center gap-2 p-2.5 rounded-xl"
+                  style={{ backgroundColor: 'var(--warning-bg)', border: '1px solid var(--warning)' }}
+                >
+                  <AlertCircle className="w-3.5 h-3.5" style={{ color: 'var(--warning)' }} />
+                  <p className="text-[11px] font-medium" style={{ color: 'var(--warning)' }}>
+                    Próximo vencimento: {new Date(card.nextDueDate).toLocaleDateString()}
+                  </p>
                 </div>
               )}
             </div>
-
-            {/* Ações */}
-            <div className="flex gap-2 mt-4 pt-4 border-t border-gray-200">
-              <button
-                onClick={() => openEditModal(card)}
-                className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium"
-              >
-                Editar
-              </button>
-              <button
-                onClick={() => onDeleteCard(card.id)}
-                className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors text-sm font-medium"
-              >
-                Excluir
-              </button>
-            </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
 
+      {/* Empty State */}
       {cards.length === 0 && (
-        <div className="text-center py-12">
-          <CreditCard className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-          <h3 className="text-xl font-semibold text-gray-900 mb-2">Nenhum cartão cadastrado</h3>
-          <p className="text-gray-600 mb-6">Clique em "Novo Cartão" para começar a gerenciar seus cartões</p>
-          <button
-            onClick={openAddModal}
-            className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-xl hover:from-blue-700 hover:to-purple-700 transition-all duration-300 shadow-lg hover:shadow-xl transform hover:scale-105"
+        <div
+          className="max-w-7xl mx-auto py-20 flex flex-col items-center justify-center border-2 border-dashed rounded-[2.5rem]"
+          style={{ borderColor: 'var(--border)' }}
+        >
+          <div
+            className="p-4 rounded-2xl mb-4"
+            style={{ backgroundColor: 'var(--card)', boxShadow: 'var(--shadow-sm)', color: 'var(--text-muted)' }}
           >
-            <Plus className="w-5 h-5" />
-            <span className="font-semibold">Cadastrar Primeiro Cartão</span>
+            <CreditCard className="w-10 h-10" />
+          </div>
+          <h3 className="text-lg font-medium" style={{ color: 'var(--text)' }}>Nenhum cartão ativo</h3>
+          <p className="text-sm mb-6" style={{ color: 'var(--text-secondary)' }}>Adicione seu primeiro cartão para começar.</p>
+          <button 
+             onClick={openAddModal}
+             className="px-6 py-2 text-white rounded-xl text-sm font-medium transition-colors"
+             style={{ backgroundColor: 'var(--primary)' }}
+             onMouseEnter={(e) => { e.currentTarget.style.filter = 'brightness(0.85)'; }}
+             onMouseLeave={(e) => { e.currentTarget.style.filter = ''; }}
+          >
+            Começar agora
           </button>
         </div>
       )}
 
-      {/* Modal para Adicionar/Editar Cartão */}
+      {/* Modal */}
       {isModalOpen && (
         <Portal>
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-            <div className="bg-white rounded-lg p-6 w-full max-w-md mx-4">
-              <h2 className="text-xl font-bold mb-4 text-gray-900">
-                {editingCard ? "Editar Cartão" : "Adicionar Cartão"}
+          <div
+            className="fixed inset-0 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+            style={{ backgroundColor: 'var(--overlay)' }}
+          >
+            <div
+              className="rounded-[2rem] p-8 w-full max-w-md relative overflow-hidden"
+              style={{ backgroundColor: 'var(--card)', boxShadow: 'var(--shadow)' }}
+            >
+              <button 
+                onClick={closeModal}
+                className="absolute top-6 right-6 p-2 transition-colors"
+                style={{ color: 'var(--text-muted)' }}
+                onMouseEnter={(e) => { e.currentTarget.style.color = 'var(--text-secondary)'; }}
+                onMouseLeave={(e) => { e.currentTarget.style.color = 'var(--text-muted)'; }}
+              >
+                <X className="w-5 h-5" />
+              </button>
+
+              <h2 className="text-xl font-bold mb-6" style={{ color: 'var(--text)' }}>
+                {editingCard ? "Editar Cartão" : "Novo Cartão"}
               </h2>
 
-              <form onSubmit={handleSubmit} className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Nome do Cartão *
-                  </label>
+              <form onSubmit={handleSubmit} className="space-y-5">
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold uppercase ml-1" style={{ color: 'var(--text-muted)' }}>Nome do Cartão</label>
                   <input
                     type="text"
                     value={formData.name}
                     onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    placeholder="Ex: Visa Final, Nubank"
+                    className="w-full px-4 py-3 border rounded-2xl outline-none transition-all focus:ring-2"
+                    style={{ backgroundColor: 'var(--input-bg)', borderColor: 'var(--input-border)', color: 'var(--text)' }}
+                    placeholder="Ex: Nubank, Visa Platinum"
                     required
                   />
                 </div>
 
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Banco (opcional)
-                  </label>
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold uppercase ml-1" style={{ color: 'var(--text-muted)' }}>Instituição Bancária</label>
                   <input
                     type="text"
                     value={formData.bank}
                     onChange={(e) => setFormData({ ...formData, bank: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    placeholder="Ex: Itaú, Bradesco"
+                    className="w-full px-4 py-3 border rounded-2xl outline-none transition-all focus:ring-2"
+                    style={{ backgroundColor: 'var(--input-bg)', borderColor: 'var(--input-border)', color: 'var(--text)' }}
+                    placeholder="Ex: Itaú, Nubank"
                   />
                 </div>
 
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Limite *
-                  </label>
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold uppercase ml-1" style={{ color: 'var(--text-muted)' }}>Limite Disponível</label>
                   <input
                     type="number"
                     value={formData.limit}
                     onChange={(e) => setFormData({ ...formData, limit: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    placeholder="0.00"
-                    step="0.01"
-                    min="0"
+                    className="w-full px-4 py-3 border rounded-2xl outline-none transition-all focus:ring-2 font-medium"
+                    style={{ backgroundColor: 'var(--input-bg)', borderColor: 'var(--input-border)', color: 'var(--text)' }}
+                    placeholder="R$ 0,00"
                     required
                   />
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Dia Fechamento *
-                    </label>
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-bold uppercase ml-1" style={{ color: 'var(--text-muted)' }}>Fechamento</label>
                     <input
                       type="number"
                       value={formData.closingDay}
                       onChange={(e) => setFormData({ ...formData, closingDay: e.target.value })}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      placeholder="1-31"
-                      min="1"
-                      max="31"
-                      required
+                      className="w-full px-4 py-3 border rounded-2xl outline-none transition-all focus:ring-2"
+                      style={{ backgroundColor: 'var(--input-bg)', borderColor: 'var(--input-border)', color: 'var(--text)' }}
+                      placeholder="Dia"
+                      min="1" max="31" required
                     />
                   </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Dia Vencimento *
-                    </label>
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-bold uppercase ml-1" style={{ color: 'var(--text-muted)' }}>Vencimento</label>
                     <input
                       type="number"
                       value={formData.dueDay}
                       onChange={(e) => setFormData({ ...formData, dueDay: e.target.value })}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      placeholder="1-31"
-                      min="1"
-                      max="31"
-                      required
+                      className="w-full px-4 py-3 border rounded-2xl outline-none transition-all focus:ring-2"
+                      style={{ backgroundColor: 'var(--input-bg)', borderColor: 'var(--input-border)', color: 'var(--text)' }}
+                      placeholder="Dia"
+                      min="1" max="31" required
                     />
                   </div>
                 </div>
@@ -366,15 +371,21 @@ const CardsPage: React.FC<CardsPageProps> = ({
                   <button
                     type="button"
                     onClick={closeModal}
-                    className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50 transition-colors"
+                    className="flex-1 py-3.5 font-semibold rounded-2xl transition-colors"
+                    style={{ color: 'var(--text-secondary)' }}
+                    onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = 'var(--bg-secondary)'; }}
+                    onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = ''; }}
                   >
                     Cancelar
                   </button>
                   <button
                     type="submit"
-                    className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+                    className="flex-1 py-3.5 text-white font-semibold rounded-2xl transition-all"
+                    style={{ backgroundColor: 'var(--primary)', boxShadow: 'var(--shadow)' }}
+                    onMouseEnter={(e) => { e.currentTarget.style.filter = 'brightness(0.85)'; }}
+                    onMouseLeave={(e) => { e.currentTarget.style.filter = ''; }}
                   >
-                    {editingCard ? "Salvar" : "Adicionar"}
+                    {editingCard ? "Salvar" : "Criar Cartão"}
                   </button>
                 </div>
               </form>

@@ -53,18 +53,23 @@ const CategoryForm: React.FC<{
   return (
     <Portal>
       <div
-        className="fixed inset-0 bg-black/60 backdrop-blur-md flex items-center justify-center z-50 p-4 pointer-events-auto"
+        className="fixed inset-0 backdrop-blur-md flex items-center justify-center z-50 p-4 pointer-events-auto"
+        style={{ backgroundColor: 'var(--overlay)' }}
         onClick={onClose}
       >
         <div
-          className="bg-white rounded-xl p-6 w-full max-w-md mx-4 max-h-[90vh] overflow-y-auto shadow-2xl pointer-events-auto"
+          className="rounded-xl p-6 w-full max-w-md mx-4 max-h-[90vh] overflow-y-auto pointer-events-auto"
+          style={{ backgroundColor: 'var(--card)', boxShadow: 'var(--shadow)' }}
           onClick={(e) => e.stopPropagation()}
         >
           <div className="flex justify-between items-center mb-4">
-            <h3 className="text-lg font-semibold text-gray-900">{title}</h3>
+            <h3 className="text-lg font-semibold" style={{ color: 'var(--text)' }}>{title}</h3>
             <button
               onClick={onClose}
-              className="text-gray-400 hover:text-gray-600 transition-colors"
+              className="transition-colors"
+              style={{ color: 'var(--text-muted)' }}
+              onMouseEnter={(e) => { e.currentTarget.style.color = 'var(--text-secondary)'; }}
+              onMouseLeave={(e) => { e.currentTarget.style.color = 'var(--text-muted)'; }}
             >
               <X size={20} />
             </button>
@@ -72,7 +77,10 @@ const CategoryForm: React.FC<{
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label
+                className="block text-sm font-medium mb-1"
+                style={{ color: 'var(--text-secondary)' }}
+              >
                 Nome da Categoria
               </label>
               <input
@@ -81,13 +89,17 @@ const CategoryForm: React.FC<{
                 onChange={(e) =>
                   setFormData((prev) => ({ ...prev, name: e.target.value }))
                 }
-                className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-300"
+                className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2"
+                style={{ backgroundColor: 'var(--input-bg)', borderColor: 'var(--input-border)', color: 'var(--text)' }}
                 required
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label
+                className="block text-sm font-medium mb-1"
+                style={{ color: 'var(--text-secondary)' }}
+              >
                 Tipo
               </label>
               <select
@@ -102,7 +114,8 @@ const CategoryForm: React.FC<{
                       | "both",
                   }))
                 }
-                className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-300 cursor-pointer"
+                className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 cursor-pointer"
+                style={{ backgroundColor: 'var(--input-bg)', borderColor: 'var(--input-border)', color: 'var(--text)' }}
               >
                 <option value="expense">Despesa</option>
                 <option value="income">Receita</option>
@@ -112,7 +125,10 @@ const CategoryForm: React.FC<{
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label
+                className="block text-sm font-medium mb-1"
+                style={{ color: 'var(--text-secondary)' }}
+              >
                 Descrição (Opcional)
               </label>
               <textarea
@@ -123,13 +139,17 @@ const CategoryForm: React.FC<{
                     description: e.target.value,
                   }))
                 }
-                className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-300"
+                className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2"
+                style={{ backgroundColor: 'var(--input-bg)', borderColor: 'var(--input-border)', color: 'var(--text)' }}
                 rows={3}
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label
+                className="block text-sm font-medium mb-1"
+                style={{ color: 'var(--text-secondary)' }}
+              >
                 Cor
               </label>
               <div className="flex gap-2 flex-wrap">
@@ -138,28 +158,36 @@ const CategoryForm: React.FC<{
                     key={color}
                     type="button"
                     onClick={() => setFormData((prev) => ({ ...prev, color }))}
-                    className={`w-8 h-8 rounded-full border-2 cursor-pointer ${
-                      formData.color === color
-                        ? "border-gray-900"
-                        : "border-gray-200"
-                    }`}
-                    style={{ backgroundColor: color }}
+                    className="w-8 h-8 rounded-full border-2 cursor-pointer"
+                    style={{
+                      backgroundColor: color,
+                      borderColor: formData.color === color ? 'var(--text)' : 'var(--border)',
+                    }}
                   />
                 ))}
               </div>
             </div>
 
-            <div className="flex gap-3 pt-6 border-t border-gray-200">
+            <div
+              className="flex gap-3 pt-6 border-t"
+              style={{ borderColor: 'var(--border)' }}
+            >
               <button
                 type="button"
                 onClick={onClose}
-                className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors duration-150 font-medium"
+                className="flex-1 px-4 py-2 border rounded-lg transition-colors duration-150 font-medium"
+                style={{ borderColor: 'var(--border)', color: 'var(--text-secondary)' }}
+                onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = 'var(--bg-secondary)'; }}
+                onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = ''; }}
               >
                 Cancelar
               </button>
               <button
                 type="submit"
-                className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-lg transition-colors duration-150 font-medium shadow-md"
+                className="flex-1 text-white px-4 py-2 rounded-lg transition-colors duration-150 font-medium"
+                style={{ backgroundColor: 'var(--primary)', boxShadow: 'var(--shadow-sm)' }}
+                onMouseEnter={(e) => { e.currentTarget.style.filter = 'brightness(0.85)'; }}
+                onMouseLeave={(e) => { e.currentTarget.style.filter = ''; }}
               >
                 Salvar
               </button>
@@ -210,42 +238,51 @@ const CategoriesPage: React.FC<CategoriesPageProps> = ({
     }
   };
 
-  const getTypeBadgeColor = (type: string) => {
+  const getTypeBadgeStyle = (type: string): React.CSSProperties => {
     switch (type) {
       case "income":
-        return "bg-green-100 text-green-800";
+        return { backgroundColor: 'var(--success-bg)', color: 'var(--success)' };
       case "expense":
-        return "bg-red-100 text-red-800";
+        return { backgroundColor: 'var(--danger-bg)', color: 'var(--danger)' };
       case "budget":
-        return "bg-purple-100 text-purple-800";
+        return { backgroundColor: 'var(--primary-bg)', color: 'var(--primary)' };
       case "both":
-        return "bg-blue-100 text-blue-800";
+        return { backgroundColor: 'var(--primary-bg)', color: 'var(--primary)' };
       default:
-        return "bg-gray-100 text-gray-800";
+        return { backgroundColor: 'var(--bg-secondary)', color: 'var(--text)' };
     }
   };
 
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
-        <h1 className="text-2xl font-bold text-gray-900">
+        <h1 className="text-2xl font-bold" style={{ color: 'var(--text)' }}>
           Gerenciar Categorias
         </h1>
         <button
           onClick={() => setIsAddModalOpen(true)}
-          className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-lg transition-colors cursor-pointer"
+          className="flex items-center gap-2 text-white px-4 py-2 rounded-lg transition-colors cursor-pointer"
+          style={{ backgroundColor: 'var(--primary)' }}
+          onMouseEnter={(e) => { e.currentTarget.style.filter = 'brightness(0.85)'; }}
+          onMouseLeave={(e) => { e.currentTarget.style.filter = ''; }}
         >
           <Plus size={20} />
           Nova Categoria
         </button>
       </div>
 
-      <div className="bg-white/80 backdrop-blur-md rounded-2xl p-6 shadow-[0_8px_36px_rgba(12,12,16,0.06)]">
+      <div
+        className="backdrop-blur-md rounded-2xl p-6"
+        style={{ backgroundColor: 'var(--card)', boxShadow: 'var(--shadow)' }}
+      >
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {categories.map((category) => (
             <div
               key={category.id}
-              className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow"
+              className="rounded-lg p-4 transition-shadow"
+              style={{ border: '1px solid var(--border)' }}
+              onMouseEnter={(e) => { e.currentTarget.style.boxShadow = 'var(--shadow-sm)'; }}
+              onMouseLeave={(e) => { e.currentTarget.style.boxShadow = ''; }}
             >
               <div className="flex items-start justify-between mb-3">
                 <div className="flex items-center gap-2">
@@ -253,18 +290,24 @@ const CategoriesPage: React.FC<CategoriesPageProps> = ({
                     className="w-4 h-4 rounded-full"
                     style={{ backgroundColor: category.color || "#10b981" }}
                   />
-                  <h3 className="font-medium text-gray-900">{category.name}</h3>
+                  <h3 className="font-medium" style={{ color: 'var(--text)' }}>{category.name}</h3>
                 </div>
                 <div className="flex gap-1">
                   <button
                     onClick={() => setEditingCategory(category)}
-                    className="p-1 text-gray-400 hover:text-blue-600 cursor-pointer"
+                    className="p-1 cursor-pointer transition-colors"
+                    style={{ color: 'var(--text-muted)' }}
+                    onMouseEnter={(e) => { e.currentTarget.style.color = 'var(--primary)'; }}
+                    onMouseLeave={(e) => { e.currentTarget.style.color = 'var(--text-muted)'; }}
                   >
                     <Edit2 size={16} />
                   </button>
                   <button
                     onClick={() => deleteCategory(category.id)}
-                    className="p-1 text-gray-400 hover:text-red-600 cursor-pointer"
+                    className="p-1 cursor-pointer transition-colors"
+                    style={{ color: 'var(--text-muted)' }}
+                    onMouseEnter={(e) => { e.currentTarget.style.color = 'var(--danger)'; }}
+                    onMouseLeave={(e) => { e.currentTarget.style.color = 'var(--text-muted)'; }}
                   >
                     <Trash2 size={16} />
                   </button>
@@ -272,15 +315,14 @@ const CategoriesPage: React.FC<CategoriesPageProps> = ({
               </div>
 
               <span
-                className={`inline-block px-2 py-1 text-xs rounded-full ${getTypeBadgeColor(
-                  category.type,
-                )}`}
+                className="inline-block px-2 py-1 text-xs rounded-full"
+                style={getTypeBadgeStyle(category.type)}
               >
                 {getTypeLabel(category.type)}
               </span>
 
               {category.description && (
-                <p className="text-sm text-gray-600 mt-2">
+                <p className="text-sm mt-2" style={{ color: 'var(--text-secondary)' }}>
                   {category.description}
                 </p>
               )}
@@ -288,7 +330,7 @@ const CategoriesPage: React.FC<CategoriesPageProps> = ({
           ))}
 
           {categories.length === 0 && (
-            <div className="col-span-full text-center py-8 text-gray-500">
+            <div className="col-span-full text-center py-8" style={{ color: 'var(--text-secondary)' }}>
               Nenhuma categoria criada ainda. Clique em "Nova Categoria" para
               começar.
             </div>

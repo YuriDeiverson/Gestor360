@@ -29,10 +29,9 @@ const AddGoalModal: React.FC<AddGoalModalProps> = ({
       name,
       targetAmount: parseFloat(targetAmount),
       deadline,
-      budgetId: "default", // Valor padrão já que não usa orçamento
+      budgetId: "default",
     });
 
-    // Reset form
     setName("");
     setTargetAmount("");
     setDeadline("");
@@ -40,18 +39,11 @@ const AddGoalModal: React.FC<AddGoalModalProps> = ({
 
   if (!isOpen) return null;
 
-  const modalStyle =
-    "fixed inset-0 bg-black/60 backdrop-blur-md flex justify-center items-center z-50 p-4 pointer-events-auto";
-  const contentStyle =
-    "bg-white p-4 sm:p-6 md:p-8 rounded-2xl w-full max-w-lg relative border border-gray-200 space-y-4 sm:space-y-6 shadow-2xl max-h-[90vh] overflow-y-auto pointer-events-auto";
-  const inputStyle =
-    "mt-1 block w-full px-3 sm:px-4 py-2.5 sm:py-3 border border-gray-300 rounded-lg placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 touch-manipulation text-base";
-  const labelStyle = "block text-sm font-medium text-gray-700 mb-1";
-
   return (
     <Portal>
       <div
-        className={modalStyle}
+        className="fixed inset-0 backdrop-blur-md flex justify-center items-center z-50 p-4 pointer-events-auto"
+        style={{ backgroundColor: 'var(--overlay)' }}
         onClick={onClose}
         role="button"
         tabIndex={0}
@@ -60,20 +52,34 @@ const AddGoalModal: React.FC<AddGoalModalProps> = ({
           if (e.key === "Escape") onClose();
         }}
       >
-        <div className={contentStyle} onClick={(e) => e.stopPropagation()}>
+        <div
+          className="p-4 sm:p-6 md:p-8 rounded-2xl w-full max-w-lg relative space-y-4 sm:space-y-6 max-h-[90vh] overflow-y-auto pointer-events-auto"
+          style={{ backgroundColor: 'var(--card)', border: '1px solid var(--border)', boxShadow: 'var(--shadow)' }}
+          onClick={(e) => e.stopPropagation()}
+        >
           <button
             onClick={onClose}
-            className="absolute top-3 right-3 sm:top-4 sm:right-4 text-gray-400 hover:text-gray-600 transition-colors touch-manipulation p-2 rounded-lg active:bg-gray-100"
+            className="absolute top-3 right-3 sm:top-4 sm:right-4 transition-colors touch-manipulation p-2 rounded-lg"
+            style={{ color: 'var(--text-muted)' }}
+            onMouseEnter={(e) => { e.currentTarget.style.color = 'var(--text-secondary)'; }}
+            onMouseLeave={(e) => { e.currentTarget.style.color = 'var(--text-muted)'; }}
             aria-label="Fechar modal"
           >
             {ICONS.close}
           </button>
-          <h2 className="text-xl sm:text-2xl font-bold text-gray-800 pr-10 sm:pr-12">
+          <h2
+            className="text-xl sm:text-2xl font-bold pr-10 sm:pr-12"
+            style={{ color: 'var(--text)' }}
+          >
             Adicionar Nova Meta
           </h2>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label htmlFor="goal-name" className={labelStyle}>
+              <label
+                htmlFor="goal-name"
+                className="block text-sm font-medium mb-1"
+                style={{ color: 'var(--text-secondary)' }}
+              >
                 Nome da Meta
               </label>
               <input
@@ -82,13 +88,18 @@ const AddGoalModal: React.FC<AddGoalModalProps> = ({
                 placeholder="Ex: Viagem, Carro novo..."
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                className={inputStyle}
+                className="mt-1 block w-full px-3 sm:px-4 py-2.5 sm:py-3 border rounded-lg focus:outline-none focus:ring-2 touch-manipulation text-base"
+                style={{ backgroundColor: 'var(--input-bg)', borderColor: 'var(--input-border)', color: 'var(--text)' }}
                 required
               />
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <label htmlFor="goal-amount" className={labelStyle}>
+                <label
+                  htmlFor="goal-amount"
+                  className="block text-sm font-medium mb-1"
+                  style={{ color: 'var(--text-secondary)' }}
+                >
                   Valor Alvo (R$)
                 </label>
                 <input
@@ -98,12 +109,17 @@ const AddGoalModal: React.FC<AddGoalModalProps> = ({
                   placeholder="0,00"
                   value={targetAmount}
                   onChange={(e) => setTargetAmount(e.target.value)}
-                  className={inputStyle}
+                  className="mt-1 block w-full px-3 sm:px-4 py-2.5 sm:py-3 border rounded-lg focus:outline-none focus:ring-2 touch-manipulation text-base"
+                  style={{ backgroundColor: 'var(--input-bg)', borderColor: 'var(--input-border)', color: 'var(--text)' }}
                   required
                 />
               </div>
               <div>
-                <label htmlFor="goal-deadline" className={labelStyle}>
+                <label
+                  htmlFor="goal-deadline"
+                  className="block text-sm font-medium mb-1"
+                  style={{ color: 'var(--text-secondary)' }}
+                >
                   Prazo Final
                 </label>
                 <input
@@ -111,22 +127,32 @@ const AddGoalModal: React.FC<AddGoalModalProps> = ({
                   type="date"
                   value={deadline}
                   onChange={(e) => setDeadline(e.target.value)}
-                  className={inputStyle}
+                  className="mt-1 block w-full px-3 sm:px-4 py-2.5 sm:py-3 border rounded-lg focus:outline-none focus:ring-2 touch-manipulation text-base"
+                  style={{ backgroundColor: 'var(--input-bg)', borderColor: 'var(--input-border)', color: 'var(--text)' }}
                   required
                 />
               </div>
             </div>
-            <div className="flex flex-col-reverse sm:flex-row justify-end gap-3 pt-4 sm:pt-6 border-t border-gray-200">
+            <div
+              className="flex flex-col-reverse sm:flex-row justify-end gap-3 pt-4 sm:pt-6 border-t"
+              style={{ borderColor: 'var(--border)' }}
+            >
               <button
                 type="button"
                 onClick={onClose}
-                className="w-full sm:w-auto px-6 py-3 sm:py-2.5 border-2 border-gray-300 rounded-lg text-gray-700 font-semibold hover:bg-gray-50 active:bg-gray-100 transition-colors touch-manipulation min-h-[48px] sm:min-h-[42px]"
+                className="w-full sm:w-auto px-6 py-3 sm:py-2.5 border-2 rounded-lg font-semibold transition-colors touch-manipulation min-h-[48px] sm:min-h-[42px]"
+                style={{ borderColor: 'var(--border)', color: 'var(--text-secondary)' }}
+                onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = 'var(--bg-secondary)'; }}
+                onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = ''; }}
               >
                 Cancelar
               </button>
               <button
                 type="submit"
-                className="w-full sm:w-auto px-6 py-3 sm:py-2.5 bg-emerald-600 text-white rounded-lg font-semibold hover:bg-emerald-700 active:bg-emerald-800 transition-colors shadow-md hover:shadow-lg touch-manipulation min-h-[48px] sm:min-h-[42px]"
+                className="w-full sm:w-auto px-6 py-3 sm:py-2.5 text-white rounded-lg font-semibold transition-colors touch-manipulation min-h-[48px] sm:min-h-[42px]"
+                style={{ backgroundColor: 'var(--primary)', boxShadow: 'var(--shadow-sm)' }}
+                onMouseEnter={(e) => { e.currentTarget.style.filter = 'brightness(0.85)'; }}
+                onMouseLeave={(e) => { e.currentTarget.style.filter = ''; }}
               >
                 Adicionar Meta
               </button>

@@ -22,6 +22,12 @@ const NotificationCenter: React.FC<NotificationCenterProps> = ({
   } = useNotifications();
 
   const [filter, setFilter] = useState<"all" | "unread" | "read">("all");
+  const [hoveredEl, setHoveredEl] = useState<string | null>(null);
+
+  const hoverProps = (id: string) => ({
+    onMouseEnter: () => setHoveredEl(id),
+    onMouseLeave: () => setHoveredEl(null),
+  });
 
   const filteredNotifications = notifications.filter((notification) => {
     switch (filter) {
@@ -36,24 +42,40 @@ const NotificationCenter: React.FC<NotificationCenterProps> = ({
 
   const handleNotificationClick = (notificationId: string, isRead: boolean) => {
     if (!isRead) {
-      markAsRead(notificationId, true); // Remove após marcar como lida
+      markAsRead(notificationId, true);
     }
   };
 
   if (!isOpen) return null;
 
   return createPortal(
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[200] p-4">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[80vh] overflow-hidden">
+    <div
+      className="fixed inset-0 flex items-center justify-center z-[200] p-4"
+      style={{ backgroundColor: "var(--overlay)" }}
+    >
+      <div
+        className="rounded-2xl w-full max-w-2xl max-h-[80vh] overflow-hidden"
+        style={{
+          backgroundColor: "var(--card)",
+          boxShadow: "var(--shadow)",
+        }}
+      >
         {/* Header */}
-        <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
+        <div
+          className="px-6 py-4 flex items-center justify-between"
+          style={{ borderBottom: "1px solid var(--border)" }}
+        >
           <div className="flex items-center space-x-3">
-            <div className="h-8 w-8 bg-emerald-100 rounded-lg flex items-center justify-center">
+            <div
+              className="h-8 w-8 rounded-lg flex items-center justify-center"
+              style={{ backgroundColor: "var(--primary-bg)" }}
+            >
               <svg
-                className="h-5 w-5 text-emerald-600"
+                className="h-5 w-5"
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
+                style={{ color: "var(--primary)" }}
               >
                 <path
                   strokeLinecap="round"
@@ -64,10 +86,16 @@ const NotificationCenter: React.FC<NotificationCenterProps> = ({
               </svg>
             </div>
             <div>
-              <h2 className="text-lg font-semibold text-gray-900">
+              <h2
+                className="text-lg font-semibold"
+                style={{ color: "var(--text)" }}
+              >
                 Central de Notificações
               </h2>
-              <p className="text-sm text-gray-500">
+              <p
+                className="text-sm"
+                style={{ color: "var(--text-secondary)" }}
+              >
                 {unreadCount > 0
                   ? `${unreadCount} não lida${unreadCount > 1 ? "s" : ""}`
                   : "Todas as notificações foram lidas"}
@@ -76,13 +104,21 @@ const NotificationCenter: React.FC<NotificationCenterProps> = ({
           </div>
           <button
             onClick={onClose}
-            className="h-8 w-8 rounded-lg hover:bg-gray-100 flex items-center justify-center transition-colors"
+            {...hoverProps("close-btn")}
+            className="h-8 w-8 rounded-lg flex items-center justify-center transition-colors"
+            style={{
+              backgroundColor:
+                hoveredEl === "close-btn"
+                  ? "var(--bg-secondary)"
+                  : "transparent",
+            }}
           >
             <svg
-              className="h-5 w-5 text-gray-500"
+              className="h-5 w-5"
               fill="none"
               stroke="currentColor"
               viewBox="0 0 24 24"
+              style={{ color: "var(--text-secondary)" }}
             >
               <path
                 strokeLinecap="round"
@@ -95,17 +131,31 @@ const NotificationCenter: React.FC<NotificationCenterProps> = ({
         </div>
 
         {/* Filters and Actions */}
-        <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
+        <div
+          className="px-6 py-4 flex items-center justify-between"
+          style={{ borderBottom: "1px solid var(--border)" }}
+        >
           <div className="flex space-x-2">
             {(["all", "unread", "read"] as const).map((filterOption) => (
               <button
                 key={filterOption}
                 onClick={() => setFilter(filterOption)}
-                className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+                {...hoverProps(`filter-${filterOption}`)}
+                className="px-3 py-1.5 rounded-lg text-sm font-medium transition-colors"
+                style={
                   filter === filterOption
-                    ? "bg-emerald-100 text-emerald-700"
-                    : "text-gray-600 hover:bg-gray-100"
-                }`}
+                    ? {
+                        backgroundColor: "var(--primary-bg)",
+                        color: "var(--primary)",
+                      }
+                    : {
+                        color: "var(--text-secondary)",
+                        backgroundColor:
+                          hoveredEl === `filter-${filterOption}`
+                            ? "var(--bg-secondary)"
+                            : "transparent",
+                      }
+                }
               >
                 {filterOption === "all"
                   ? "Todas"
@@ -120,7 +170,18 @@ const NotificationCenter: React.FC<NotificationCenterProps> = ({
             {notifications.some((n) => n.is_read) && (
               <button
                 onClick={removeReadNotifications}
-                className="px-3 py-1.5 text-sm text-gray-600 hover:text-gray-800 font-medium rounded-lg hover:bg-gray-100 transition-colors"
+                {...hoverProps("clear-read")}
+                className="px-3 py-1.5 text-sm font-medium rounded-lg transition-colors"
+                style={{
+                  color:
+                    hoveredEl === "clear-read"
+                      ? "var(--text)"
+                      : "var(--text-secondary)",
+                  backgroundColor:
+                    hoveredEl === "clear-read"
+                      ? "var(--bg-secondary)"
+                      : "transparent",
+                }}
               >
                 Limpar lidas
               </button>
@@ -128,7 +189,18 @@ const NotificationCenter: React.FC<NotificationCenterProps> = ({
             {notifications.length > 0 && (
               <button
                 onClick={clearAllNotifications}
-                className="px-3 py-1.5 text-sm text-red-600 hover:text-red-700 font-medium rounded-lg hover:bg-red-50 transition-colors"
+                {...hoverProps("clear-all")}
+                className="px-3 py-1.5 text-sm font-medium rounded-lg transition-colors"
+                style={{
+                  color:
+                    hoveredEl === "clear-all"
+                      ? "var(--danger)"
+                      : "var(--danger)",
+                  backgroundColor:
+                    hoveredEl === "clear-all"
+                      ? "var(--danger-bg)"
+                      : "transparent",
+                }}
               >
                 Limpar todas
               </button>
@@ -136,7 +208,15 @@ const NotificationCenter: React.FC<NotificationCenterProps> = ({
             {unreadCount > 0 && (
               <button
                 onClick={() => markAllAsRead(true)}
-                className="px-3 py-1.5 text-sm text-emerald-600 hover:text-emerald-700 font-medium rounded-lg hover:bg-emerald-50 transition-colors"
+                {...hoverProps("mark-read")}
+                className="px-3 py-1.5 text-sm font-medium rounded-lg transition-colors"
+                style={{
+                  color: "var(--primary)",
+                  backgroundColor:
+                    hoveredEl === "mark-read"
+                      ? "var(--primary-bg)"
+                      : "transparent",
+                }}
               >
                 Ler e limpar
               </button>
@@ -147,12 +227,16 @@ const NotificationCenter: React.FC<NotificationCenterProps> = ({
         {/* Notifications List */}
         <div className="max-h-96 overflow-y-auto">
           {filteredNotifications.length === 0 ? (
-            <div className="p-12 text-center text-gray-500">
+            <div
+              className="p-12 text-center"
+              style={{ color: "var(--text-secondary)" }}
+            >
               <svg
-                className="h-16 w-16 mx-auto mb-4 text-gray-400"
+                className="h-16 w-16 mx-auto mb-4"
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
+                style={{ color: "var(--text-muted)" }}
               >
                 <path
                   strokeLinecap="round"
@@ -174,11 +258,20 @@ const NotificationCenter: React.FC<NotificationCenterProps> = ({
             filteredNotifications.map((notification, index) => (
               <div
                 key={notification.id}
-                className={`px-6 py-4 cursor-pointer transition-colors hover:bg-gray-50 ${
-                  index !== filteredNotifications.length - 1
-                    ? "border-b border-gray-100"
-                    : ""
-                } ${!notification.is_read ? "bg-emerald-50" : ""}`}
+                {...hoverProps(`notif-${notification.id}`)}
+                className="px-6 py-4 cursor-pointer transition-colors"
+                style={{
+                  backgroundColor:
+                    hoveredEl === `notif-${notification.id}`
+                      ? "var(--bg-secondary)"
+                      : !notification.is_read
+                      ? "var(--primary-bg)"
+                      : "transparent",
+                  borderBottom:
+                    index !== filteredNotifications.length - 1
+                      ? "1px solid var(--border-light)"
+                      : "none",
+                }}
                 onClick={() =>
                   handleNotificationClick(notification.id, notification.is_read)
                 }
@@ -186,12 +279,16 @@ const NotificationCenter: React.FC<NotificationCenterProps> = ({
                 <div className="flex items-start space-x-4">
                   <div className="flex-shrink-0">
                     {notification.type === "dashboard_invite" ? (
-                      <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
+                      <div
+                        className="w-10 h-10 rounded-full flex items-center justify-center"
+                        style={{ backgroundColor: "var(--primary-bg)" }}
+                      >
                         <svg
-                          className="w-5 h-5 text-blue-600"
+                          className="w-5 h-5"
                           fill="none"
                           stroke="currentColor"
                           viewBox="0 0 24 24"
+                          style={{ color: "var(--primary)" }}
                         >
                           <path
                             strokeLinecap="round"
@@ -202,12 +299,16 @@ const NotificationCenter: React.FC<NotificationCenterProps> = ({
                         </svg>
                       </div>
                     ) : (
-                      <div className="w-10 h-10 bg-emerald-100 rounded-full flex items-center justify-center">
+                      <div
+                        className="w-10 h-10 rounded-full flex items-center justify-center"
+                        style={{ backgroundColor: "var(--primary-bg)" }}
+                      >
                         <svg
-                          className="w-5 h-5 text-emerald-600"
+                          className="w-5 h-5"
                           fill="none"
                           stroke="currentColor"
                           viewBox="0 0 24 24"
+                          style={{ color: "var(--primary)" }}
                         >
                           <path
                             strokeLinecap="round"
@@ -222,13 +323,22 @@ const NotificationCenter: React.FC<NotificationCenterProps> = ({
                   <div className="flex-1 min-w-0">
                     <div className="flex items-start justify-between">
                       <div className="flex-1">
-                        <h3 className="text-sm font-semibold text-gray-900">
+                        <h3
+                          className="text-sm font-semibold"
+                          style={{ color: "var(--text)" }}
+                        >
                           {notification.title}
                         </h3>
-                        <p className="text-sm text-gray-600 mt-1">
+                        <p
+                          className="text-sm mt-1"
+                          style={{ color: "var(--text-secondary)" }}
+                        >
                           {notification.message}
                         </p>
-                        <p className="text-xs text-gray-400 mt-2">
+                        <p
+                          className="text-xs mt-2"
+                          style={{ color: "var(--text-muted)" }}
+                        >
                           {new Date(notification.created_at).toLocaleDateString(
                             "pt-BR",
                             {
@@ -243,15 +353,25 @@ const NotificationCenter: React.FC<NotificationCenterProps> = ({
                       </div>
                       <div className="flex items-center space-x-2 ml-3">
                         {!notification.is_read && (
-                          <div className="w-3 h-3 bg-emerald-600 rounded-full flex-shrink-0"></div>
+                          <div
+                            className="w-3 h-3 rounded-full flex-shrink-0"
+                            style={{ backgroundColor: "var(--primary)" }}
+                          ></div>
                         )}
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
                             deleteNotification(notification.id);
                           }}
-                          className="p-1 text-gray-400 hover:text-red-500 transition-colors"
+                          {...hoverProps(`delete-${notification.id}`)}
+                          className="p-1 transition-colors"
                           title="Deletar notificação"
+                          style={{
+                            color:
+                              hoveredEl === `delete-${notification.id}`
+                                ? "var(--danger)"
+                                : "var(--text-muted)",
+                          }}
                         >
                           <svg
                             className="w-4 h-4"
@@ -277,15 +397,30 @@ const NotificationCenter: React.FC<NotificationCenterProps> = ({
         </div>
 
         {/* Footer */}
-        <div className="px-6 py-4 border-t border-gray-200 bg-gray-50">
-          <div className="flex items-center justify-between text-sm text-gray-600">
+        <div
+          className="px-6 py-4"
+          style={{
+            borderTop: "1px solid var(--border)",
+            backgroundColor: "var(--bg-secondary)",
+          }}
+        >
+          <div
+            className="flex items-center justify-between text-sm"
+            style={{ color: "var(--text-secondary)" }}
+          >
             <span>
               {filteredNotifications.length} de {notifications.length}{" "}
               notificações
             </span>
             <button
               onClick={onClose}
-              className="text-emerald-600 hover:text-emerald-700 font-medium"
+              {...hoverProps("footer-close")}
+              className="font-medium transition-colors"
+              style={{
+                color: "var(--primary)",
+                filter:
+                  hoveredEl === "footer-close" ? "brightness(0.85)" : "none",
+              }}
             >
               Fechar
             </button>

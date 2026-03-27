@@ -23,11 +23,21 @@ const CustomTooltip: React.FC<{ active?: boolean; payload?: any[] }> = ({
   if (active && payload && payload.length) {
     const p = payload[0];
     return (
-      <div className="bg-white border border-gray-200 rounded-lg p-2 shadow-md">
-        <p className="font-semibold text-gray-800 text-sm">
+      <div
+        className="rounded-lg p-2"
+        style={{
+          backgroundColor: 'var(--card)',
+          border: '1px solid var(--border)',
+          boxShadow: 'var(--shadow-sm)',
+        }}
+      >
+        <p
+          className="font-semibold text-sm"
+          style={{ color: 'var(--text)' }}
+        >
           {p.name}: {formatCurrency(p.value ?? 0)}
         </p>
-        <p className="text-xs text-gray-500">
+        <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>
           ({((p.percent ?? 0) * 100).toFixed(1)}%)
         </p>
       </div>
@@ -57,9 +67,21 @@ const ExpenseDonutChart: React.FC<ExpenseDonutChartProps> = ({ data }) => {
 
   if (!recharts)
     return (
-      <div className="bg-white/80 backdrop-blur-md rounded-2xl p-4 sm:p-6 animate-pulse shadow-[0_6px_24px_rgba(12,12,16,0.06)]">
-        <div className="h-6 bg-gray-100 rounded w-2/3 mb-4"></div>
-        <div className="h-[250px] sm:h-[300px] bg-gray-100 rounded"></div>
+      <div
+        className="backdrop-blur-md rounded-2xl p-4 sm:p-6 animate-pulse"
+        style={{
+          backgroundColor: 'var(--card)',
+          boxShadow: 'var(--shadow)',
+        }}
+      >
+        <div
+          className="h-6 rounded w-2/3 mb-4"
+          style={{ backgroundColor: 'var(--bg-secondary)' }}
+        />
+        <div
+          className="h-[250px] sm:h-[300px] rounded"
+          style={{ backgroundColor: 'var(--bg-secondary)' }}
+        />
       </div>
     );
 
@@ -67,8 +89,17 @@ const ExpenseDonutChart: React.FC<ExpenseDonutChartProps> = ({ data }) => {
     recharts;
 
   return (
-    <div className="bg-white/80 backdrop-blur-md rounded-2xl p-4 sm:p-6 shadow-[0_6px_24px_rgba(12,12,16,0.06)]">
-      <h3 className="text-base sm:text-lg font-medium text-gray-900 mb-3 sm:mb-4">
+    <div
+      className="backdrop-blur-md rounded-2xl p-4 sm:p-6"
+      style={{
+        backgroundColor: 'var(--card)',
+        boxShadow: 'var(--shadow)',
+      }}
+    >
+      <h3
+        className="text-base sm:text-lg font-medium mb-3 sm:mb-4"
+        style={{ color: 'var(--text)' }}
+      >
         Despesas por categoria
       </h3>
       {chartData.length ? (
@@ -83,7 +114,7 @@ const ExpenseDonutChart: React.FC<ExpenseDonutChartProps> = ({ data }) => {
               dataKey="value"
               nameKey="name"
             >
-              {chartData.map((_, i) => (
+              {chartData.map((_: unknown, i: number) => (
                 <Cell key={i} fill={COLORS[i % COLORS.length]} />
               ))}
             </Pie>
@@ -92,7 +123,10 @@ const ExpenseDonutChart: React.FC<ExpenseDonutChartProps> = ({ data }) => {
           </PieChart>
         </ResponsiveContainer>
       ) : (
-        <div className="h-[250px] flex items-center justify-center text-gray-500 text-sm">
+        <div
+          className="h-[250px] flex items-center justify-center text-sm"
+          style={{ color: 'var(--text-secondary)' }}
+        >
           Nenhuma despesa registrada.
         </div>
       )}

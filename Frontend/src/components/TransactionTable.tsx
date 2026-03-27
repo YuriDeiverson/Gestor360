@@ -20,12 +20,11 @@ const TransactionRow: React.FC<{
   handlePayInstallment?: (transaction: Transaction) => void;
 }> = ({ transaction, onEdit, onDelete, handlePayInstallment }) => {
   const isExpense = transaction.type === "expense";
-  const amountClass = isExpense ? "text-rose-600" : "text-emerald-600";
 
-  const statusBadge =
+  const statusStyle: React.CSSProperties =
     transaction.status === "completed"
-      ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
-      : "bg-amber-50 text-amber-700 border border-amber-200";
+      ? { backgroundColor: 'var(--success-bg)', color: 'var(--success)', border: '1px solid var(--success)' }
+      : { backgroundColor: 'var(--warning-bg)', color: 'var(--warning)', border: '1px solid var(--warning)' };
 
   const isInstallment =
     transaction.installments && transaction.installments > 1;
@@ -39,21 +38,29 @@ const TransactionRow: React.FC<{
 
   return (
     <>
-      <tr className="hover:bg-gray-50 transition hidden sm:table-row border-b border-gray-100">
+      <tr
+        className="transition hidden sm:table-row"
+        style={{ borderBottom: '1px solid var(--border)' }}
+        onMouseEnter={e => { e.currentTarget.style.backgroundColor = 'var(--card-hover)'; }}
+        onMouseLeave={e => { e.currentTarget.style.backgroundColor = ''; }}
+      >
         {/* Data */}
-        <td className="py-4 px-4 text-sm text-gray-600 whitespace-nowrap">
+        <td className="py-4 px-4 text-sm whitespace-nowrap" style={{ color: 'var(--text-secondary)' }}>
           {formatDate(transaction.date)}
         </td>
 
         {/* Descrição */}
         <td className="py-4 px-4">
-          <div className="font-medium text-gray-900 flex items-center gap-2">
+          <div className="font-medium flex items-center gap-2" style={{ color: 'var(--text)' }}>
             {transaction.description}
             {isInstallment && (
-              <span className="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium bg-blue-50 text-blue-700 border border-blue-200">
+              <span
+                className="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium"
+                style={{ backgroundColor: 'var(--primary-bg)', color: 'var(--primary)', border: '1px solid var(--primary)' }}
+              >
                 {transaction.currentInstallment}/{transaction.installments}
                 {transaction.status === "pending" && (
-                  <span className="ml-1 text-amber-600">
+                  <span className="ml-1" style={{ color: 'var(--warning)' }}>
                     ({(transaction.installments - (transaction.currentInstallment || 0))} restantes)
                   </span>
                 )}
@@ -63,29 +70,32 @@ const TransactionRow: React.FC<{
         </td>
 
         {/* Categoria */}
-        <td className="py-4 px-4 text-sm text-gray-600">
+        <td className="py-4 px-4 text-sm" style={{ color: 'var(--text-secondary)' }}>
           {transaction.category}
         </td>
 
         {/* Conta */}
-        <td className="py-4 px-4 text-sm text-gray-600">
+        <td className="py-4 px-4 text-sm" style={{ color: 'var(--text-secondary)' }}>
           {transaction.method === "Cartão de Crédito" ? (transaction.cardName || "Cartão") : transaction.account}
         </td>
 
         {/* Cartão */}
-        <td className="py-4 px-4 text-sm text-gray-600">
+        <td className="py-4 px-4 text-sm" style={{ color: 'var(--text-secondary)' }}>
           {transaction.cardName || "-"}
         </td>
 
         {/* Valor */}
         <td className="py-4 px-4 text-right">
-          <span className={`font-semibold text-base ${amountClass}`}>
+          <span
+            className="font-semibold text-base"
+            style={{ color: isExpense ? 'var(--danger)' : 'var(--success)' }}
+          >
             {isExpense ? "−" : "+"} {formatCurrency(transaction.amount)}
           </span>
           {isInstallment && (
-            <div className="text-xs text-gray-500 mt-1 text-right">
+            <div className="text-xs mt-1 text-right" style={{ color: 'var(--text-muted)' }}>
               <div>Total: {formatCurrency(transaction.totalAmount || 0)}</div>
-              <div className="text-amber-600 font-medium">
+              <div className="font-medium" style={{ color: 'var(--warning)' }}>
                 Falta: {formatCurrency(transaction.remainingAmount || 0)}
               </div>
             </div>
@@ -95,7 +105,8 @@ const TransactionRow: React.FC<{
         {/* Status */}
         <td className="py-4 px-4">
           <span
-            className={`px-3 py-1.5 rounded-lg text-xs font-semibold ${statusBadge}`}
+            className="px-3 py-1.5 rounded-lg text-xs font-semibold"
+            style={statusStyle}
           >
             {transaction.status === "completed" ? "Pago" : "Pendente"}
           </span>
@@ -107,7 +118,10 @@ const TransactionRow: React.FC<{
             {canPayNextInstallment && handlePayInstallment && (
               <button
                 onClick={() => handlePayInstallment(transaction)}
-                className="bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1.5 rounded-lg text-xs font-medium transition shadow-sm hover:shadow active:scale-95"
+                className="text-white px-3 py-1.5 rounded-lg text-xs font-medium transition active:scale-95"
+                style={{ backgroundColor: 'var(--primary)', boxShadow: 'var(--shadow-sm)' }}
+                onMouseEnter={e => { e.currentTarget.style.filter = 'brightness(0.9)'; }}
+                onMouseLeave={e => { e.currentTarget.style.filter = ''; }}
               >
                 Pagar
               </button>
@@ -115,7 +129,10 @@ const TransactionRow: React.FC<{
             {onEdit && (
               <button
                 onClick={() => onEdit(transaction)}
-                className="text-gray-400 hover:text-blue-600 p-1.5 rounded-lg hover:bg-blue-50 transition"
+                className="p-1.5 rounded-lg transition"
+                style={{ color: 'var(--text-muted)' }}
+                onMouseEnter={e => { e.currentTarget.style.color = 'var(--primary)'; e.currentTarget.style.backgroundColor = 'var(--primary-bg)'; }}
+                onMouseLeave={e => { e.currentTarget.style.color = 'var(--text-muted)'; e.currentTarget.style.backgroundColor = ''; }}
               >
                 {ICONS.edit}
               </button>
@@ -123,7 +140,10 @@ const TransactionRow: React.FC<{
             {onDelete && (
               <button
                 onClick={() => onDelete(transaction.id)}
-                className="text-gray-400 hover:text-red-600 p-1.5 rounded-lg hover:bg-red-50 transition"
+                className="p-1.5 rounded-lg transition"
+                style={{ color: 'var(--text-muted)' }}
+                onMouseEnter={e => { e.currentTarget.style.color = 'var(--danger)'; e.currentTarget.style.backgroundColor = 'var(--danger-bg)'; }}
+                onMouseLeave={e => { e.currentTarget.style.color = 'var(--text-muted)'; e.currentTarget.style.backgroundColor = ''; }}
               >
                 {ICONS.trash}
               </button>
@@ -135,30 +155,42 @@ const TransactionRow: React.FC<{
       {/* Mobile */}
       <tr className="sm:hidden">
         <td colSpan={7} className="p-0">
-          <div className="p-3 sm:p-4 border-b border-gray-100 hover:bg-gray-50 transition space-y-3">
+          <div
+            className="p-3 sm:p-4 transition space-y-3"
+            style={{ borderBottom: '1px solid var(--border)' }}
+            onMouseEnter={e => { e.currentTarget.style.backgroundColor = 'var(--card-hover)'; }}
+            onMouseLeave={e => { e.currentTarget.style.backgroundColor = ''; }}
+          >
             <div className="flex justify-between items-start gap-2">
-              <div className="font-medium text-gray-900 flex-1 min-w-0">
+              <div className="font-medium flex-1 min-w-0" style={{ color: 'var(--text)' }}>
                 <div className="truncate">{transaction.description}</div>
                 {isInstallment && (
-                  <span className="ml-0 mt-1 inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium bg-blue-50 text-blue-700 border border-blue-200">
+                  <span
+                    className="ml-0 mt-1 inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium"
+                    style={{ backgroundColor: 'var(--primary-bg)', color: 'var(--primary)', border: '1px solid var(--primary)' }}
+                  >
                     {transaction.currentInstallment}/{transaction.installments}
                   </span>
                 )}
               </div>
               <span
-                className={`px-2 py-1 rounded-lg text-xs font-semibold flex-shrink-0 ${statusBadge}`}
+                className="px-2 py-1 rounded-lg text-xs font-semibold flex-shrink-0"
+                style={statusStyle}
               >
                 {transaction.status === "completed" ? "Pago" : "Pendente"}
               </span>
             </div>
-            <div className="text-sm text-gray-600 space-y-1">
+            <div className="text-sm space-y-1" style={{ color: 'var(--text-secondary)' }}>
               <div className="flex justify-between">
                 <span>Data:</span>
                 <span className="font-medium">{formatDate(transaction.date)}</span>
               </div>
               <div className="flex justify-between">
                 <span>Valor:</span>
-                <span className={`font-semibold ${amountClass}`}>
+                <span
+                  className="font-semibold"
+                  style={{ color: isExpense ? 'var(--danger)' : 'var(--success)' }}
+                >
                   {isExpense ? "−" : "+"} {formatCurrency(transaction.amount)}
                 </span>
               </div>
@@ -175,12 +207,12 @@ const TransactionRow: React.FC<{
                 </div>
               )}
               {isInstallment && (
-                <div className="text-xs text-gray-500 bg-gray-50 p-2 rounded-lg">
+                <div className="text-xs p-2 rounded-lg" style={{ color: 'var(--text-muted)', backgroundColor: 'var(--bg-secondary)' }}>
                   <div className="flex justify-between">
                     <span>Total:</span>
                     <span>{formatCurrency(transaction.totalAmount || 0)}</span>
                   </div>
-                  <div className="flex justify-between text-amber-600 font-medium">
+                  <div className="flex justify-between font-medium" style={{ color: 'var(--warning)' }}>
                     <span>Falta:</span>
                     <span>{formatCurrency(transaction.remainingAmount || 0)}</span>
                   </div>
@@ -191,7 +223,10 @@ const TransactionRow: React.FC<{
               {canPayNextInstallment && handlePayInstallment && (
                 <button
                   onClick={() => handlePayInstallment(transaction)}
-                  className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-2 rounded-lg text-sm font-medium transition shadow-sm hover:shadow-md active:scale-95"
+                  className="flex-1 text-white px-3 py-2 rounded-lg text-sm font-medium transition active:scale-95"
+                  style={{ backgroundColor: 'var(--primary)', boxShadow: 'var(--shadow-sm)' }}
+                  onMouseEnter={e => { e.currentTarget.style.filter = 'brightness(0.9)'; }}
+                  onMouseLeave={e => { e.currentTarget.style.filter = ''; }}
                 >
                   Pagar Parcela
                 </button>
@@ -199,7 +234,10 @@ const TransactionRow: React.FC<{
               {onEdit && (
                 <button
                   onClick={() => onEdit(transaction)}
-                  className="p-2 text-gray-400 hover:text-blue-600 rounded-lg hover:bg-blue-50 transition"
+                  className="p-2 rounded-lg transition"
+                  style={{ color: 'var(--text-muted)' }}
+                  onMouseEnter={e => { e.currentTarget.style.color = 'var(--primary)'; e.currentTarget.style.backgroundColor = 'var(--primary-bg)'; }}
+                  onMouseLeave={e => { e.currentTarget.style.color = 'var(--text-muted)'; e.currentTarget.style.backgroundColor = ''; }}
                 >
                   {ICONS.edit}
                 </button>
@@ -207,7 +245,10 @@ const TransactionRow: React.FC<{
               {onDelete && (
                 <button
                   onClick={() => onDelete(transaction.id)}
-                  className="p-2 text-gray-400 hover:text-red-600 rounded-lg hover:bg-red-50 transition"
+                  className="p-2 rounded-lg transition"
+                  style={{ color: 'var(--text-muted)' }}
+                  onMouseEnter={e => { e.currentTarget.style.color = 'var(--danger)'; e.currentTarget.style.backgroundColor = 'var(--danger-bg)'; }}
+                  onMouseLeave={e => { e.currentTarget.style.color = 'var(--text-muted)'; e.currentTarget.style.backgroundColor = ''; }}
                 >
                   {ICONS.trash}
                 </button>
@@ -238,11 +279,17 @@ const TransactionTable: React.FC<TransactionTableProps> = ({
   const totalPages = Math.max(1, Math.ceil(transactions.length / itemsPerPage));
 
   return (
-    <div className="rounded-xl sm:rounded-2xl bg-white shadow-sm border border-gray-200 overflow-hidden">
-      <div className="px-4 sm:px-6 py-3 sm:py-4 border-b border-gray-200 bg-gray-50">
-        <h3 className="text-base sm:text-lg font-semibold text-gray-900">{title}</h3>
+    <div
+      className="rounded-xl sm:rounded-2xl overflow-hidden"
+      style={{ backgroundColor: 'var(--card)', boxShadow: 'var(--shadow-sm)', border: '1px solid var(--border)' }}
+    >
+      <div
+        className="px-4 sm:px-6 py-3 sm:py-4"
+        style={{ borderBottom: '1px solid var(--border)', backgroundColor: 'var(--bg-secondary)' }}
+      >
+        <h3 className="text-base sm:text-lg font-semibold" style={{ color: 'var(--text)' }}>{title}</h3>
         {transactions.length > 0 && (
-          <p className="text-xs sm:text-sm text-gray-500 mt-0.5">
+          <p className="text-xs sm:text-sm mt-0.5" style={{ color: 'var(--text-muted)' }}>
             {transactions.length}{" "}
             {transactions.length === 1 ? "transação" : "transações"}
           </p>
@@ -251,35 +298,38 @@ const TransactionTable: React.FC<TransactionTableProps> = ({
 
       <div className="overflow-x-auto">
         <table className="w-full">
-          <thead className="hidden sm:table-header-group bg-gray-50 border-b border-gray-200">
+          <thead
+            className="hidden sm:table-header-group"
+            style={{ backgroundColor: 'var(--bg-secondary)', borderBottom: '1px solid var(--border)' }}
+          >
             <tr>
-              <th className="px-3 sm:px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+              <th className="px-3 sm:px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--text-secondary)' }}>
                 Data
               </th>
-              <th className="px-3 sm:px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+              <th className="px-3 sm:px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--text-secondary)' }}>
                 Descrição
               </th>
-              <th className="px-3 sm:px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider hidden lg:table-cell">
+              <th className="px-3 sm:px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider hidden lg:table-cell" style={{ color: 'var(--text-secondary)' }}>
                 Categoria
               </th>
-              <th className="px-3 sm:px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider hidden md:table-cell">
+              <th className="px-3 sm:px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider hidden md:table-cell" style={{ color: 'var(--text-secondary)' }}>
                 Conta
               </th>
-              <th className="px-3 sm:px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider hidden lg:table-cell">
+              <th className="px-3 sm:px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider hidden lg:table-cell" style={{ color: 'var(--text-secondary)' }}>
                 Cartão
               </th>
-              <th className="px-3 sm:px-4 py-3 text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">
+              <th className="px-3 sm:px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--text-secondary)' }}>
                 Valor
               </th>
-              <th className="px-3 sm:px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider hidden sm:table-cell">
+              <th className="px-3 sm:px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider hidden sm:table-cell" style={{ color: 'var(--text-secondary)' }}>
                 Status
               </th>
-              <th className="px-3 sm:px-4 py-3 text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">
+              <th className="px-3 sm:px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--text-secondary)' }}>
                 Ações
               </th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-gray-100">
+          <tbody>
             {paginatedTransactions.length > 0 ? (
               paginatedTransactions.map((t) => (
                 <TransactionRow
@@ -292,7 +342,7 @@ const TransactionTable: React.FC<TransactionTableProps> = ({
               ))
             ) : (
               <tr>
-                <td colSpan={8} className="text-center py-8 sm:py-12 text-sm text-gray-500">
+                <td colSpan={8} className="text-center py-8 sm:py-12 text-sm" style={{ color: 'var(--text-muted)' }}>
                   Nenhuma transação encontrada
                 </td>
               </tr>
@@ -302,7 +352,10 @@ const TransactionTable: React.FC<TransactionTableProps> = ({
       </div>
 
       {transactions.length > itemsPerPage && (
-        <div className="px-4 sm:px-6 py-3 sm:py-4 border-t border-gray-200 bg-gray-50">
+        <div
+          className="px-4 sm:px-6 py-3 sm:py-4"
+          style={{ borderTop: '1px solid var(--border)', backgroundColor: 'var(--bg-secondary)' }}
+        >
           <Pagination
             currentPage={currentPage}
             totalPages={totalPages}

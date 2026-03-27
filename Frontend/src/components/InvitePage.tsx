@@ -25,10 +25,14 @@ const InvitePage: React.FC = () => {
   const [error, setError] = useState<string>("");
   const [needsAccount, setNeedsAccount] = useState(false);
 
-  // Estados para criação de conta
   const [name, setName] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+
+  const [focusedInput, setFocusedInput] = useState<string | null>(null);
+  const [hoverLoginBtn, setHoverLoginBtn] = useState(false);
+  const [hoverCancelBtn, setHoverCancelBtn] = useState(false);
+  const [hoverAcceptBtn, setHoverAcceptBtn] = useState(false);
 
   useEffect(() => {
     if (token) {
@@ -44,7 +48,6 @@ const InvitePage: React.FC = () => {
         const data = await response.json();
         setInviteInfo(data);
 
-        // Verificar se o usuário já existe (se chegou aqui via link, provavelmente não tem conta)
         setNeedsAccount(true);
       } else if (response.status === 404) {
         setError("Convite não encontrado ou já foi processado");
@@ -96,12 +99,10 @@ const InvitePage: React.FC = () => {
       if (response.ok) {
         const data = await response.json();
 
-        // Fazer login automático
         localStorage.setItem("authToken", data.accessToken);
 
-        // Redirecionar para o dashboard
         navigate("/dashboard");
-        window.location.reload(); // Para atualizar o contexto de auth
+        window.location.reload();
       } else {
         const errorData = await response.json();
         setError(errorData.error || "Erro ao aceitar convite");
@@ -123,13 +124,31 @@ const InvitePage: React.FC = () => {
     });
   };
 
+  const inputStyle = (field: string): React.CSSProperties => ({
+    backgroundColor: 'var(--input-bg)',
+    borderColor: focusedInput === field ? 'var(--primary)' : 'var(--input-border)',
+    color: 'var(--text)',
+    ...(focusedInput === field ? { boxShadow: '0 0 0 2px var(--primary-bg)' } : {}),
+  });
+
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-emerald-50 to-teal-100 flex items-center justify-center">
-        <div className="bg-white rounded-2xl shadow-xl p-8 max-w-md w-full mx-4">
+      <div
+        className="min-h-screen flex items-center justify-center"
+        style={{ background: 'linear-gradient(to bottom right, var(--gradient-start), var(--gradient-end))' }}
+      >
+        <div
+          className="rounded-2xl p-8 max-w-md w-full mx-4"
+          style={{ backgroundColor: 'var(--card)', boxShadow: 'var(--shadow)' }}
+        >
           <div className="flex flex-col items-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-emerald-600"></div>
-            <p className="mt-4 text-gray-600">Carregando convite...</p>
+            <div
+              className="animate-spin rounded-full h-12 w-12 border-b-2"
+              style={{ borderColor: 'var(--primary)' }}
+            ></div>
+            <p className="mt-4" style={{ color: 'var(--text-secondary)' }}>
+              Carregando convite...
+            </p>
           </div>
         </div>
       </div>
@@ -138,15 +157,25 @@ const InvitePage: React.FC = () => {
 
   if (error && !inviteInfo) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-emerald-50 to-teal-100 flex items-center justify-center">
-        <div className="bg-white rounded-2xl shadow-xl p-8 max-w-md w-full mx-4">
+      <div
+        className="min-h-screen flex items-center justify-center"
+        style={{ background: 'linear-gradient(to bottom right, var(--gradient-start), var(--gradient-end))' }}
+      >
+        <div
+          className="rounded-2xl p-8 max-w-md w-full mx-4"
+          style={{ backgroundColor: 'var(--card)', boxShadow: 'var(--shadow)' }}
+        >
           <div className="text-center">
-            <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+            <div
+              className="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4"
+              style={{ backgroundColor: 'var(--danger-bg)' }}
+            >
               <svg
-                className="w-8 h-8 text-red-600"
+                className="w-8 h-8"
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
+                style={{ color: 'var(--danger)' }}
               >
                 <path
                   strokeLinecap="round"
@@ -156,13 +185,23 @@ const InvitePage: React.FC = () => {
                 />
               </svg>
             </div>
-            <h2 className="text-xl font-semibold text-gray-900 mb-2">
+            <h2
+              className="text-xl font-semibold mb-2"
+              style={{ color: 'var(--text)' }}
+            >
               Convite Inválido
             </h2>
-            <p className="text-gray-600 mb-6">{error}</p>
+            <p className="mb-6" style={{ color: 'var(--text-secondary)' }}>
+              {error}
+            </p>
             <button
               onClick={() => navigate("/login")}
-              className="w-full py-3 px-4 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors"
+              className="w-full py-3 px-4 text-white rounded-lg transition-colors"
+              style={{
+                backgroundColor: hoverLoginBtn ? 'var(--primary-light)' : 'var(--primary)',
+              }}
+              onMouseEnter={() => setHoverLoginBtn(true)}
+              onMouseLeave={() => setHoverLoginBtn(false)}
             >
               Ir para Login
             </button>
@@ -173,15 +212,25 @@ const InvitePage: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-emerald-50 to-teal-100 flex items-center justify-center">
-      <div className="bg-white rounded-2xl shadow-xl p-8 max-w-lg w-full mx-4">
+    <div
+      className="min-h-screen flex items-center justify-center"
+      style={{ background: 'linear-gradient(to bottom right, var(--gradient-start), var(--gradient-end))' }}
+    >
+      <div
+        className="rounded-2xl p-8 max-w-lg w-full mx-4"
+        style={{ backgroundColor: 'var(--card)', boxShadow: 'var(--shadow)' }}
+      >
         <div className="text-center mb-6">
-          <div className="w-16 h-16 bg-emerald-100 rounded-full flex items-center justify-center mx-auto mb-4">
+          <div
+            className="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4"
+            style={{ backgroundColor: 'var(--primary-bg)' }}
+          >
             <svg
-              className="w-8 h-8 text-emerald-600"
+              className="w-8 h-8"
               fill="none"
               stroke="currentColor"
               viewBox="0 0 24 24"
+              style={{ color: 'var(--primary)' }}
             >
               <path
                 strokeLinecap="round"
@@ -191,25 +240,40 @@ const InvitePage: React.FC = () => {
               />
             </svg>
           </div>
-          <h1 className="text-2xl font-bold text-gray-900 mb-2">
+          <h1
+            className="text-2xl font-bold mb-2"
+            style={{ color: 'var(--text)' }}
+          >
             Convite para Dashboard
           </h1>
-          <p className="text-gray-600">
+          <p style={{ color: 'var(--text-secondary)' }}>
             Você foi convidado para participar de um dashboard
           </p>
         </div>
 
         {inviteInfo && (
-          <div className="bg-gray-50 rounded-lg p-4 mb-6">
-            <h3 className="font-semibold text-gray-900 mb-2">
+          <div
+            className="rounded-lg p-4 mb-6"
+            style={{ backgroundColor: 'var(--bg-secondary)' }}
+          >
+            <h3
+              className="font-semibold mb-2"
+              style={{ color: 'var(--text)' }}
+            >
               📊 {inviteInfo.dashboard_name}
             </h3>
             {inviteInfo.dashboard_description && (
-              <p className="text-gray-600 text-sm mb-3">
+              <p
+                className="text-sm mb-3"
+                style={{ color: 'var(--text-secondary)' }}
+              >
                 {inviteInfo.dashboard_description}
               </p>
             )}
-            <div className="space-y-2 text-sm">
+            <div
+              className="space-y-2 text-sm"
+              style={{ color: 'var(--text)' }}
+            >
               <p>
                 <span className="font-medium">Convidado por:</span>{" "}
                 {inviteInfo.inviter_name}
@@ -223,9 +287,17 @@ const InvitePage: React.FC = () => {
                 {formatDate(inviteInfo.created_at)}
               </p>
               {inviteInfo.message && (
-                <div className="mt-3 pt-3 border-t border-gray-200">
+                <div
+                  className="mt-3 pt-3 border-t"
+                  style={{ borderColor: 'var(--border)' }}
+                >
                   <p className="font-medium mb-1">Mensagem:</p>
-                  <p className="text-gray-600 italic">"{inviteInfo.message}"</p>
+                  <p
+                    className="italic"
+                    style={{ color: 'var(--text-secondary)' }}
+                  >
+                    "{inviteInfo.message}"
+                  </p>
                 </div>
               )}
             </div>
@@ -234,43 +306,64 @@ const InvitePage: React.FC = () => {
 
         {needsAccount && (
           <div className="mb-6">
-            <h3 className="font-semibold text-gray-900 mb-4">
+            <h3
+              className="font-semibold mb-4"
+              style={{ color: 'var(--text)' }}
+            >
               Criar sua conta
             </h3>
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label
+                  className="block text-sm font-medium mb-2"
+                  style={{ color: 'var(--text)' }}
+                >
                   Nome completo
                 </label>
                 <input
                   type="text"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                  className="w-full px-3 py-2 border rounded-lg transition-colors"
+                  style={inputStyle('name')}
+                  onFocus={() => setFocusedInput('name')}
+                  onBlur={() => setFocusedInput(null)}
                   placeholder="Seu nome completo"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label
+                  className="block text-sm font-medium mb-2"
+                  style={{ color: 'var(--text)' }}
+                >
                   Senha
                 </label>
                 <input
                   type="password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                  className="w-full px-3 py-2 border rounded-lg transition-colors"
+                  style={inputStyle('password')}
+                  onFocus={() => setFocusedInput('password')}
+                  onBlur={() => setFocusedInput(null)}
                   placeholder="Mínimo 6 caracteres"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label
+                  className="block text-sm font-medium mb-2"
+                  style={{ color: 'var(--text)' }}
+                >
                   Confirmar senha
                 </label>
                 <input
                   type="password"
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                  className="w-full px-3 py-2 border rounded-lg transition-colors"
+                  style={inputStyle('confirmPassword')}
+                  onFocus={() => setFocusedInput('confirmPassword')}
+                  onBlur={() => setFocusedInput(null)}
                   placeholder="Digite a senha novamente"
                 />
               </div>
@@ -279,22 +372,42 @@ const InvitePage: React.FC = () => {
         )}
 
         {error && (
-          <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg">
-            <p className="text-red-700 text-sm">{error}</p>
+          <div
+            className="mb-4 p-3 border rounded-lg"
+            style={{
+              backgroundColor: 'var(--danger-bg)',
+              borderColor: 'var(--danger)',
+            }}
+          >
+            <p className="text-sm" style={{ color: 'var(--danger)' }}>
+              {error}
+            </p>
           </div>
         )}
 
         <div className="flex space-x-3">
           <button
             onClick={() => navigate("/login")}
-            className="flex-1 py-3 px-4 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+            className="flex-1 py-3 px-4 border rounded-lg transition-colors"
+            style={{
+              borderColor: 'var(--border)',
+              color: 'var(--text)',
+              backgroundColor: hoverCancelBtn ? 'var(--card-hover)' : 'transparent',
+            }}
+            onMouseEnter={() => setHoverCancelBtn(true)}
+            onMouseLeave={() => setHoverCancelBtn(false)}
           >
             Cancelar
           </button>
           <button
             onClick={handleAcceptInvite}
             disabled={accepting}
-            className="flex-1 py-3 px-4 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center"
+            className="flex-1 py-3 px-4 text-white rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center"
+            style={{
+              backgroundColor: hoverAcceptBtn ? 'var(--primary-light)' : 'var(--primary)',
+            }}
+            onMouseEnter={() => setHoverAcceptBtn(true)}
+            onMouseLeave={() => setHoverAcceptBtn(false)}
           >
             {accepting ? (
               <>

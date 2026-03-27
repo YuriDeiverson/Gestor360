@@ -17,11 +17,9 @@ interface CardSummary {
 }
 
 const CardsDashboard: React.FC<CardsDashboardProps> = ({ transactions }) => {
-  // Agrupar transações por banco
   const cardsSummary = useMemo(() => {
     const cardGroups: Record<string, Transaction[]> = {};
     
-    // Agrupar transações por cardName
     transactions.forEach(transaction => {
       const cardName = transaction.cardName || "Cartão";
       if (!cardGroups[cardName]) {
@@ -30,7 +28,11 @@ const CardsDashboard: React.FC<CardsDashboardProps> = ({ transactions }) => {
       cardGroups[cardName].push(transaction);
     });
 
-    // Calcular resumo para cada cartão
+    const colors = [
+      "#a855f7", "#3b82f6", "#22c55e", "#f97316",
+      "#ef4444", "#6366f1", "#ec4899", "#eab308"
+    ];
+
     const summaries: CardSummary[] = Object.entries(cardGroups).map(([bankName, cardTransactions]) => {
       const expenses = cardTransactions.filter(t => t.type === "expense");
       const income = cardTransactions.filter(t => t.type === "income");
@@ -41,11 +43,6 @@ const CardsDashboard: React.FC<CardsDashboardProps> = ({ transactions }) => {
       const pendingAmount = pending.reduce((sum, t) => sum + t.amount, 0);
       const netBalance = totalReceived - totalSpent;
 
-      // Cores diferentes para cada banco
-      const colors = [
-        "bg-purple-500", "bg-blue-500", "bg-green-500", "bg-orange-500",
-        "bg-red-500", "bg-indigo-500", "bg-pink-500", "bg-yellow-500"
-      ];
       const colorIndex = Object.keys(cardGroups).indexOf(bankName) % colors.length;
 
       return {
@@ -72,18 +69,21 @@ const CardsDashboard: React.FC<CardsDashboardProps> = ({ transactions }) => {
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-2 mb-6">
-        <CreditCard className="w-6 h-6 text-blue-600" />
-        <h2 className="text-2xl font-bold text-gray-900">Dashboard de Cartões</h2>
+        <CreditCard className="w-6 h-6" style={{ color: 'var(--primary)' }} />
+        <h2 className="text-2xl font-bold" style={{ color: 'var(--text)' }}>Dashboard de Cartões</h2>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {cardsSummary.map((card) => (
           <div
             key={card.bankName}
-            className="bg-white rounded-xl shadow-lg overflow-hidden border border-gray-200 hover:shadow-xl transition-shadow"
+            className="rounded-xl overflow-hidden transition-shadow"
+            style={{ backgroundColor: 'var(--card)', boxShadow: 'var(--shadow)', border: '1px solid var(--border)' }}
+            onMouseEnter={(e) => { e.currentTarget.style.boxShadow = '0 20px 25px -5px rgba(0,0,0,0.1), 0 8px 10px -6px rgba(0,0,0,0.1)'; }}
+            onMouseLeave={(e) => { e.currentTarget.style.boxShadow = 'var(--shadow)'; }}
           >
-            {/* Header */}
-            <div className={`${card.color} p-4 text-white`}>
+            {/* Header - data-driven color, kept as-is */}
+            <div className="p-4 text-white" style={{ backgroundColor: card.color }}>
               <div className="flex items-center justify-between">
                 <h3 className="text-lg font-semibold">{card.bankName}</h3>
                 <CreditCard className="w-5 h-5" />
@@ -95,60 +95,71 @@ const CardsDashboard: React.FC<CardsDashboardProps> = ({ transactions }) => {
 
             {/* Content */}
             <div className="p-4 space-y-4">
-              {/* Resumo Financeiro */}
               <div className="grid grid-cols-2 gap-4">
-                <div className="text-center p-3 bg-red-50 rounded-lg">
-                  <div className="flex items-center justify-center gap-1 text-red-600 mb-1">
+                <div
+                  className="text-center p-3 rounded-lg"
+                  style={{ backgroundColor: 'var(--danger-bg)' }}
+                >
+                  <div className="flex items-center justify-center gap-1 mb-1" style={{ color: 'var(--danger)' }}>
                     <TrendingDown className="w-4 h-4" />
                     <span className="text-xs font-medium">Despesas</span>
                   </div>
-                  <p className="text-lg font-bold text-red-700">
+                  <p className="text-lg font-bold" style={{ color: 'var(--danger)' }}>
                     {formatCurrency(card.totalSpent)}
                   </p>
                 </div>
 
-                <div className="text-center p-3 bg-green-50 rounded-lg">
-                  <div className="flex items-center justify-center gap-1 text-green-600 mb-1">
+                <div
+                  className="text-center p-3 rounded-lg"
+                  style={{ backgroundColor: 'var(--success-bg)' }}
+                >
+                  <div className="flex items-center justify-center gap-1 mb-1" style={{ color: 'var(--success)' }}>
                     <TrendingUp className="w-4 h-4" />
                     <span className="text-xs font-medium">Receitas</span>
                   </div>
-                  <p className="text-lg font-bold text-green-700">
+                  <p className="text-lg font-bold" style={{ color: 'var(--success)' }}>
                     {formatCurrency(card.totalReceived)}
                   </p>
                 </div>
               </div>
 
-              {/* Saldo Líquido */}
-              <div className={`text-center p-3 rounded-lg ${
-                card.netBalance >= 0 ? 'bg-blue-50' : 'bg-orange-50'
-              }`}>
-                <p className="text-xs font-medium mb-1 text-gray-600">Saldo Líquido</p>
-                <p className={`text-xl font-bold ${
-                  card.netBalance >= 0 ? 'text-blue-700' : 'text-orange-700'
-                }`}>
+              <div
+                className="text-center p-3 rounded-lg"
+                style={{ backgroundColor: card.netBalance >= 0 ? 'var(--primary-bg)' : 'var(--warning-bg)' }}
+              >
+                <p className="text-xs font-medium mb-1" style={{ color: 'var(--text-secondary)' }}>Saldo Líquido</p>
+                <p
+                  className="text-xl font-bold"
+                  style={{ color: card.netBalance >= 0 ? 'var(--primary)' : 'var(--warning)' }}
+                >
                   {formatCurrency(card.netBalance)}
                 </p>
               </div>
 
-              {/* Pendentes */}
               {card.pendingAmount > 0 && (
-                <div className="text-center p-3 bg-yellow-50 rounded-lg border border-yellow-200">
-                  <div className="flex items-center justify-center gap-1 text-yellow-600 mb-1">
+                <div
+                  className="text-center p-3 rounded-lg"
+                  style={{ backgroundColor: 'var(--warning-bg)', border: '1px solid var(--warning)' }}
+                >
+                  <div className="flex items-center justify-center gap-1 mb-1" style={{ color: 'var(--warning)' }}>
                     <AlertCircle className="w-4 h-4" />
                     <span className="text-xs font-medium">Pendentes</span>
                   </div>
-                  <p className="text-lg font-bold text-yellow-700">
+                  <p className="text-lg font-bold" style={{ color: 'var(--warning)' }}>
                     {formatCurrency(card.pendingAmount)}
                   </p>
                 </div>
               )}
 
-              {/* Indicador de Status */}
-              <div className="flex items-center justify-center p-2 bg-gray-50 rounded-lg">
-                <div className={`w-2 h-2 rounded-full mr-2 ${
-                  card.pendingAmount > 0 ? 'bg-yellow-500' : 'bg-green-500'
-                }`} />
-                <span className="text-xs text-gray-600">
+              <div
+                className="flex items-center justify-center p-2 rounded-lg"
+                style={{ backgroundColor: 'var(--bg-secondary)' }}
+              >
+                <div
+                  className="w-2 h-2 rounded-full mr-2"
+                  style={{ backgroundColor: card.pendingAmount > 0 ? 'var(--warning)' : 'var(--success)' }}
+                />
+                <span className="text-xs" style={{ color: 'var(--text-secondary)' }}>
                   {card.pendingAmount > 0 ? 'Com pendências' : 'Em dia'}
                 </span>
               </div>
@@ -159,30 +170,33 @@ const CardsDashboard: React.FC<CardsDashboardProps> = ({ transactions }) => {
 
       {/* Resumo Geral */}
       {cardsSummary.length > 0 && (
-        <div className="bg-white rounded-xl shadow-lg p-6 border border-gray-200">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">Resumo Geral</h3>
+        <div
+          className="rounded-xl p-6"
+          style={{ backgroundColor: 'var(--card)', boxShadow: 'var(--shadow)', border: '1px solid var(--border)' }}
+        >
+          <h3 className="text-lg font-semibold mb-4" style={{ color: 'var(--text)' }}>Resumo Geral</h3>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <div className="text-center">
-              <p className="text-sm text-gray-600 mb-1">Total Gasto</p>
-              <p className="text-xl font-bold text-red-600">
+              <p className="text-sm mb-1" style={{ color: 'var(--text-secondary)' }}>Total Gasto</p>
+              <p className="text-xl font-bold" style={{ color: 'var(--danger)' }}>
                 {formatCurrency(cardsSummary.reduce((sum, card) => sum + card.totalSpent, 0))}
               </p>
             </div>
             <div className="text-center">
-              <p className="text-sm text-gray-600 mb-1">Total Recebido</p>
-              <p className="text-xl font-bold text-green-600">
+              <p className="text-sm mb-1" style={{ color: 'var(--text-secondary)' }}>Total Recebido</p>
+              <p className="text-xl font-bold" style={{ color: 'var(--success)' }}>
                 {formatCurrency(cardsSummary.reduce((sum, card) => sum + card.totalReceived, 0))}
               </p>
             </div>
             <div className="text-center">
-              <p className="text-sm text-gray-600 mb-1">Total Pendente</p>
-              <p className="text-xl font-bold text-yellow-600">
+              <p className="text-sm mb-1" style={{ color: 'var(--text-secondary)' }}>Total Pendente</p>
+              <p className="text-xl font-bold" style={{ color: 'var(--warning)' }}>
                 {formatCurrency(cardsSummary.reduce((sum, card) => sum + card.pendingAmount, 0))}
               </p>
             </div>
             <div className="text-center">
-              <p className="text-sm text-gray-600 mb-1">Saldo Final</p>
-              <p className="text-xl font-bold text-blue-600">
+              <p className="text-sm mb-1" style={{ color: 'var(--text-secondary)' }}>Saldo Final</p>
+              <p className="text-xl font-bold" style={{ color: 'var(--primary)' }}>
                 {formatCurrency(cardsSummary.reduce((sum, card) => sum + card.netBalance, 0))}
               </p>
             </div>
@@ -191,10 +205,13 @@ const CardsDashboard: React.FC<CardsDashboardProps> = ({ transactions }) => {
       )}
 
       {cardsSummary.length === 0 && (
-        <div className="text-center py-12 bg-white rounded-xl shadow-lg border border-gray-200">
-          <CreditCard className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-          <p className="text-gray-600">Nenhuma transação de cartão encontrada</p>
-          <p className="text-sm text-gray-500 mt-2">
+        <div
+          className="text-center py-12 rounded-xl"
+          style={{ backgroundColor: 'var(--card)', boxShadow: 'var(--shadow)', border: '1px solid var(--border)' }}
+        >
+          <CreditCard className="w-12 h-12 mx-auto mb-4" style={{ color: 'var(--text-muted)' }} />
+          <p style={{ color: 'var(--text-secondary)' }}>Nenhuma transação de cartão encontrada</p>
+          <p className="text-sm mt-2" style={{ color: 'var(--text-muted)' }}>
             Importe uma fatura para começar a visualizar seus cartões
           </p>
         </div>

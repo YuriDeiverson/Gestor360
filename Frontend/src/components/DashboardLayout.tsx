@@ -16,7 +16,7 @@ const DashboardLayout: React.FC<LayoutProps> = ({ children }) => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 flex">
+    <div className="min-h-screen flex transition-colors duration-300" style={{ backgroundColor: 'var(--bg)' }}>
       {/* SIDEBAR */}
       <Sidebar
         isOpen={isSidebarOpen}

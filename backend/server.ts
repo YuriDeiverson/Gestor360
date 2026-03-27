@@ -6,9 +6,12 @@ import { supabaseAdmin } from "./supabase";
 import authRoutes from "./routes/auth";
 import { authMiddleware, AuthenticatedRequest } from "./middleware";
 import budgetsRoutes from "./routes/budgets";
-import transacoesRoutes from "./routes/transacoes";
+import transacoesRoutes, {
+  payInstallmentHandler,
+} from "./routes/transacoes";
 import metasRoutes from "./routes/metas";
 import cardsRoutes from "./routes/cards";
+import subscriptionsRoutes from "./routes/subscriptions";
 
 // ====================
 // ENV
@@ -256,9 +259,16 @@ app.post("/api/invite/:token/accept", async (req, res) => {
 // ROTAS DE DOMÍNIO
 // ====================
 app.use("/api/budgets", budgetsRoutes);
+/** Rota explícita: garante POST pay-installment (evita 404 com sub-router em alguns ambientes). */
+app.post(
+  "/api/transacoes/:id/pay-installment",
+  authMiddleware,
+  payInstallmentHandler,
+);
 app.use("/api/transacoes", transacoesRoutes);
 app.use("/api/metas", metasRoutes);
 app.use("/api/cards", cardsRoutes);
+app.use("/api/subscriptions", subscriptionsRoutes);
 
 // ====================
 // NOTIFICAÇÕES
