@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   Transaction,
   TransactionType,
@@ -56,6 +56,8 @@ const AddTransactionModal: React.FC<AddTransactionModalProps> = ({
   const [incomeCategory, setIncomeCategory] = useState<IncomeCategoryId>("Salário");
   /** Valor por parcela; se parcelas > 1, total = valor × parcelas. */
   const [expenseInstallments, setExpenseInstallments] = useState("1");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const submitLockRef = useRef(false);
 
   const isLockedIncome = lockType && defaultType === "income";
   const isLockedExpense = lockType && defaultType === "expense";
@@ -99,6 +101,13 @@ const AddTransactionModal: React.FC<AddTransactionModalProps> = ({
     }
   }, [budgetId, budgets, lockType]);
 
+  useEffect(() => {
+    if (!isOpen) {
+      setIsSubmitting(false);
+      submitLockRef.current = false;
+    }
+  }, [isOpen]);
+
   const visibleBudgets = budgets.filter((b) => {
     if (lockType && defaultType === "income") return b.type === "income";
     if (lockType && defaultType === "expense") return b.type === "expense";
@@ -107,22 +116,28 @@ const AddTransactionModal: React.FC<AddTransactionModalProps> = ({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (submitLockRef.current || isSubmitting) return;
+    submitLockRef.current = true;
 
     if (isLockedIncome) {
       if (!description.trim() || !amount || !date || !account) {
         alert("Preencha descrição, valor, data e conta.");
+        submitLockRef.current = false;
         return;
       }
     } else if (isLockedExpense) {
       if (!description.trim() || !amount || !date || !budgetId || !account) {
         alert("Preencha descrição, valor, data, categoria e conta.");
+        submitLockRef.current = false;
         return;
       }
     } else if (!amount || !date || (!isSalaryMode && !account)) {
       alert("Preencha os campos obrigatórios.");
+      submitLockRef.current = false;
       return;
     }
 
+    setIsSubmitting(true);
     try {
       if (isLockedIncome) {
         await onAddTransaction({
@@ -196,6 +211,9 @@ const AddTransactionModal: React.FC<AddTransactionModalProps> = ({
     } catch (error) {
       console.error(error);
       alert("Erro ao adicionar transação.");
+    } finally {
+      submitLockRef.current = false;
+      setIsSubmitting(false);
     }
   };
 
@@ -363,10 +381,14 @@ const AddTransactionModal: React.FC<AddTransactionModalProps> = ({
 
                 <button
                   type="submit"
+                  disabled={isSubmitting}
                   className={txPrimaryButtonClass}
-                  style={{ backgroundColor: "var(--primary)" }}
+                  style={{
+                    backgroundColor: "var(--primary)",
+                    opacity: isSubmitting ? 0.7 : 1,
+                  }}
                 >
-                  Adicionar receita
+                  {isSubmitting ? "Salvando…" : "Adicionar receita"}
                 </button>
               </>
             )}
@@ -524,10 +546,14 @@ const AddTransactionModal: React.FC<AddTransactionModalProps> = ({
 
                 <button
                   type="submit"
+                  disabled={isSubmitting}
                   className={txPrimaryButtonClass}
-                  style={{ backgroundColor: "var(--primary)" }}
+                  style={{
+                    backgroundColor: "var(--primary)",
+                    opacity: isSubmitting ? 0.7 : 1,
+                  }}
                 >
-                  Adicionar despesa
+                  {isSubmitting ? "Salvando…" : "Adicionar despesa"}
                 </button>
               </>
             )}
@@ -673,10 +699,14 @@ const AddTransactionModal: React.FC<AddTransactionModalProps> = ({
                   </button>
                   <button
                     type="submit"
+                    disabled={isSubmitting}
                     className={`${txPrimaryButtonClass} sm:w-auto sm:min-w-[120px]`}
-                    style={{ backgroundColor: "var(--primary)" }}
+                    style={{
+                      backgroundColor: "var(--primary)",
+                      opacity: isSubmitting ? 0.7 : 1,
+                    }}
                   >
-                    Salvar
+                    {isSubmitting ? "Salvando…" : "Salvar"}
                   </button>
                 </div>
               </>

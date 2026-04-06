@@ -7,7 +7,7 @@ export interface Subscription {
   name: string;
   amount: number;
   billingDay: number;
-  /** Mantido só por compatibilidade com a API; imagens vêm do código (`subscriptionPresets.ts`). */
+  /** Preset de logo; URL resolvida em `subscriptionPresets` (logo.dev ou Clearbit). */
   imageUrl?: string | null;
   iconKey?: string;
 }

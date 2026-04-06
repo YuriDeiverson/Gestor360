@@ -588,7 +588,10 @@ const DashboardPage: React.FC = () => {
     }
   };
 
-  const editTransaction = async (editedTransaction: Transaction) => {
+  const editTransaction = async (
+    editedTransaction: Transaction,
+    options?: { silent?: boolean },
+  ) => {
     try {
       console.log("🔄 Editando transação:", editedTransaction);
 
@@ -619,15 +622,17 @@ const DashboardPage: React.FC = () => {
       console.log("🔄 Recarregando dados após editar transação...");
       await loadData();
 
-      showSuccess(
-        "Transação editada",
-        `"${editedTransaction.description}" foi atualizada com sucesso!`
-      );
+      if (!options?.silent) {
+        showSuccess(
+          "Transação editada",
+          `"${editedTransaction.description}" foi atualizada com sucesso!`,
+        );
+      }
     } catch (error) {
       console.error("❌ Erro ao editar transação:", error);
       showError(
         "Erro ao editar transação",
-        "Não foi possível atualizar a transação. Tente novamente."
+        "Não foi possível atualizar a transação. Tente novamente.",
       );
     }
   };

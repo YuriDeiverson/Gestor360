@@ -11,7 +11,15 @@ import {
   AlertTriangle,
   XCircle,
   PiggyBank,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
+import {
+  getCurrentMonthKey,
+  shiftMonthKey,
+  formatMonthKeyLabel,
+  isTransactionInMonthKey,
+} from "../utils/monthKey";
 
 interface BudgetsPageProps {
   budgetCategories: BudgetCategory[];
@@ -32,19 +40,27 @@ const BudgetsPage: React.FC<BudgetsPageProps> = ({
   const [editingBudget, setEditingBudget] = useState<BudgetCategory | null>(
     null,
   );
+  const [referenceMonth, setReferenceMonth] = useState(() =>
+    getCurrentMonthKey(),
+  );
 
   const spendingByCategory = useMemo(() => {
     const map: Record<string, number> = {};
 
-    transactions
-      .filter((t) => t.type === "expense" && t.budgetId)
-      .forEach((t) => {
-        const budgetKey = t.budgetId!;
-        map[budgetKey] = (map[budgetKey] || 0) + t.amount;
-      });
+    transactions.forEach((t) => {
+      if (!t.budgetId || !isTransactionInMonthKey(t.date, referenceMonth)) {
+        return;
+      }
+      const cat = budgetCategories.find((c) => c.id === t.budgetId);
+      if (!cat) return;
+      if (cat.type === "expense" && t.type !== "expense") return;
+      if (cat.type === "income" && t.type !== "income") return;
+      const budgetKey = t.budgetId!;
+      map[budgetKey] = (map[budgetKey] || 0) + t.amount;
+    });
 
     return map;
-  }, [transactions]);
+  }, [transactions, referenceMonth, budgetCategories]);
 
   const summary = useMemo(() => {
     let totalPlanned = 0;
@@ -135,7 +151,8 @@ const BudgetsPage: React.FC<BudgetsPageProps> = ({
             Orçamento
           </h1>
           <p className="text-sm mt-0.5" style={{ color: "var(--text-secondary)" }}>
-            Controle seus limites por categoria
+            Gastos e receitas do mês civil (dia 1 ao último dia). Trocar o mês
+            só altera a visualização — os limites das categorias são os mesmos.
           </p>
         </div>
         <button
@@ -153,6 +170,64 @@ const BudgetsPage: React.FC<BudgetsPageProps> = ({
           <Plus className="w-3.5 h-3.5" />
           Novo orçamento
         </button>
+      </div>
+
+      <div
+        className="flex flex-wrap items-center justify-between gap-3 rounded-xl border px-4 py-3"
+        style={{
+          backgroundColor: "var(--card)",
+          borderColor: "var(--border)",
+        }}
+      >
+        <p className="text-sm font-medium" style={{ color: "var(--text-secondary)" }}>
+          Mês de referência
+        </p>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setReferenceMonth((m) => shiftMonthKey(m, -1))}
+            className="p-2 rounded-lg border transition-colors"
+            style={{
+              borderColor: "var(--border)",
+              color: "var(--text)",
+              backgroundColor: "var(--bg-secondary)",
+            }}
+            aria-label="Mês anterior"
+          >
+            <ChevronLeft className="w-5 h-5" />
+          </button>
+          <span
+            className="min-w-[180px] text-center text-sm font-semibold capitalize"
+            style={{ color: "var(--text)" }}
+          >
+            {formatMonthKeyLabel(referenceMonth)}
+          </span>
+          <button
+            type="button"
+            onClick={() => setReferenceMonth((m) => shiftMonthKey(m, 1))}
+            className="p-2 rounded-lg border transition-colors"
+            style={{
+              borderColor: "var(--border)",
+              color: "var(--text)",
+              backgroundColor: "var(--bg-secondary)",
+            }}
+            aria-label="Próximo mês"
+          >
+            <ChevronRight className="w-5 h-5" />
+          </button>
+          <button
+            type="button"
+            onClick={() => setReferenceMonth(getCurrentMonthKey())}
+            className="ml-1 px-3 py-2 text-xs font-semibold rounded-lg border"
+            style={{
+              borderColor: "var(--border)",
+              color: "var(--primary)",
+              backgroundColor: "var(--bg-secondary)",
+            }}
+          >
+            Hoje
+          </button>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -338,11 +413,20 @@ const BudgetsPage: React.FC<BudgetsPageProps> = ({
                   boxShadow: "var(--shadow-sm)",
                 }}
               >
-                <div className="absolute top-3.5 right-3.5 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                <div
+                  className="absolute top-3 right-3 z-10 flex items-center gap-0.5 rounded-xl border p-0.5 touch-manipulation"
+                  style={{
+                    borderColor: "var(--border)",
+                    backgroundColor: "var(--card)",
+                    boxShadow: "var(--shadow-sm)",
+                  }}
+                  role="group"
+                  aria-label="Ações do orçamento"
+                >
                   <button
                     type="button"
                     onClick={() => setEditingBudget(cat)}
-                    className="p-1.5 rounded-lg transition-colors"
+                    className="flex h-10 w-10 items-center justify-center rounded-lg sm:h-9 sm:w-9"
                     style={{ color: "var(--text-muted)" }}
                     onMouseEnter={(e) => {
                       e.currentTarget.style.color = "var(--text)";
@@ -351,27 +435,29 @@ const BudgetsPage: React.FC<BudgetsPageProps> = ({
                       e.currentTarget.style.color = "var(--text-muted)";
                     }}
                     title="Editar"
+                    aria-label="Editar orçamento"
                   >
                     {ICONS.edit}
                   </button>
                   <button
                     type="button"
                     onClick={() => deleteBudget(cat.id)}
-                    className="p-1.5 rounded-lg transition-colors"
-                    style={{ color: "var(--text-muted)" }}
+                    className="flex h-10 w-10 items-center justify-center rounded-lg sm:h-9 sm:w-9"
+                    style={{ color: "var(--danger)" }}
                     onMouseEnter={(e) => {
                       e.currentTarget.style.color = "var(--danger)";
                     }}
                     onMouseLeave={(e) => {
-                      e.currentTarget.style.color = "var(--text-muted)";
+                      e.currentTarget.style.color = "var(--danger)";
                     }}
                     title="Excluir"
+                    aria-label="Excluir orçamento"
                   >
-                    <Trash2 className="w-3.5 h-3.5" />
+                    <Trash2 className="w-4 h-4" />
                   </button>
                 </div>
 
-                <div className="flex items-center justify-between mb-4 pr-14">
+                <div className="flex items-center justify-between mb-4 pr-24">
                   <div className="flex items-center gap-2.5 min-w-0">
                     <div
                       className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0"

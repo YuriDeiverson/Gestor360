@@ -30,6 +30,7 @@ import {
   getLastNMonthKeys,
   shortMonthLabelFromKey,
 } from "../utils/dateMonth";
+import { dedupePendingInstallmentsForMonth } from "../utils/cardUsageMonth";
 import { formatCurrency } from "../utils/helpers";
 
 interface DashboardContentProps {
@@ -299,18 +300,10 @@ const DashboardContent: React.FC<DashboardContentProps> = ({
     [txFull],
   );
 
-  const pendingInstallments = useMemo(() => {
-    const list = txFull.filter(
-      (t) =>
-        t.type === "expense" &&
-        t.status === "pending" &&
-        (t.installments ?? 1) > 1,
-    );
-    return [...list].sort(
-      (a, b) =>
-        new Date(b.date).getTime() - new Date(a.date).getTime(),
-    );
-  }, [txFull]);
+  const pendingInstallments = useMemo(
+    () => dedupePendingInstallmentsForMonth(txFull, currentMonth),
+    [txFull, currentMonth],
+  );
 
   type RecentFilter = "all" | "income" | "expense";
   const [recentFilter, setRecentFilter] = useState<RecentFilter>("all");
@@ -768,18 +761,24 @@ const DashboardContent: React.FC<DashboardContentProps> = ({
                 boxShadow: "var(--shadow-sm)",
               }}
             >
-              <div className="mb-3 flex items-center gap-2">
+              <div className="mb-3 flex w-full min-w-0 items-center gap-2">
                 <CreditCard
                   className="h-4 w-4 shrink-0"
                   style={{ color: "var(--primary)" }}
                   aria-hidden
                 />
                 <h3
-                  className="text-sm font-semibold"
+                  className="min-w-0 flex-1 text-sm font-semibold"
                   style={{ color: "var(--text)" }}
                 >
                   Compras parceladas
                 </h3>
+                <span
+                  className="shrink-0 text-[11px] font-normal"
+                  style={{ color: "var(--text-muted)" }}
+                >
+                  neste mês
+                </span>
               </div>
               <ul className="space-y-2">
                 {pendingInstallments.map((t) => {
@@ -802,7 +801,7 @@ const DashboardContent: React.FC<DashboardContentProps> = ({
                         className="shrink-0 text-xs tabular-nums"
                         style={{ color: "var(--text-muted)" }}
                       >
-                        {cur}/{total}
+                        Parc. {cur}/{total}
                       </span>
                       {payInstallment ? (
                         <button

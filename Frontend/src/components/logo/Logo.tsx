@@ -15,4 +15,5 @@ export function Logo() {
       />
     </svg>
   );
+
 }

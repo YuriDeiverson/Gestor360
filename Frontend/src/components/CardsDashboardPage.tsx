@@ -10,6 +10,8 @@ import {
   Edit2,
   Wallet,
   X,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 import { Transaction } from "../utils/types";
 import type { Subscription } from "../utils/subscriptionsApi";
@@ -19,7 +21,17 @@ import {
   getCardBrandStyle,
   matchPresetByBankLabel,
 } from "../utils/cardBrands";
-import { currentMonthLabel, isDateInCurrentMonth } from "../utils/dateMonth";
+import {
+  getCurrentMonthKey,
+  shiftMonthKey,
+  formatMonthKeyLabel,
+  dateToMonthKey,
+  dateMonthPlusMonths,
+} from "../utils/monthKey";
+import {
+  creditCardUsageInMonth,
+  subscriptionMonthlyTotalForCard,
+} from "../utils/cardUsageMonth";
 
 interface Card {
   id: string;
@@ -141,65 +153,82 @@ const CardsDashboardPage: React.FC<CardsDashboardPageProps> = ({
   const [showBalance, setShowBalance] = useState<Record<string, boolean>>({});
   const [editingCard, setEditingCard] = useState<Card | null>(null);
   const [newCard, setNewCard] = useState<Partial<Card>>(defaultForm);
+  const [cardMonthKey, setCardMonthKey] = useState(() => getCurrentMonthKey());
 
-  const monthLabel = useMemo(() => currentMonthLabel(), []);
+  const monthLabel = useMemo(
+    () => formatMonthKeyLabel(cardMonthKey),
+    [cardMonthKey],
+  );
 
   const cardsSummary = useMemo(() => {
     try {
-      const cardGroups: Record<string, Transaction[]> = {};
-
-      transactions.forEach((transaction) => {
-        if (
-          transaction.method === "Cartão de Crédito" &&
-          transaction.type === "expense"
-        ) {
-          const accountId = transaction.account;
-          if (!cardGroups[accountId]) {
-            cardGroups[accountId] = [];
-          }
-          cardGroups[accountId].push(transaction);
-        }
-      });
+      const nextMonthKey = shiftMonthKey(cardMonthKey, 1);
 
       const summaries: CardSummary[] = cards.map((card) => {
-        const cardTransactions = cardGroups[card.id] || [];
-        const inMonth = (t: Transaction) => isDateInCurrentMonth(t.date);
-        const expenses = cardTransactions.filter(
-          (t) => t.type === "expense" && inMonth(t),
+        const txUsage = creditCardUsageInMonth(
+          transactions,
+          card.id,
+          cardMonthKey,
         );
-        const pending = cardTransactions.filter(
-          (t) => t.status === "pending" && inMonth(t),
+        const subsTotal = subscriptionMonthlyTotalForCard(
+          subscriptions,
+          card.id,
         );
-
-        const fromTx = expenses.reduce((sum, t) => sum + (t.amount || 0), 0);
-        const fromSubTx = expenses
-          .filter((t) => t.description?.startsWith("Assinatura:"))
+        const fromSubTx = transactions
+          .filter(
+            (t) =>
+              t.account === card.id &&
+              t.type === "expense" &&
+              t.method === "Cartão de Crédito" &&
+              t.description?.startsWith("Assinatura:") &&
+              dateToMonthKey(t.date) === cardMonthKey,
+          )
           .reduce((sum, t) => sum + (t.amount || 0), 0);
-        const subsTotal = subscriptions
-          .filter((s) => s.cardId === card.id)
-          .reduce((sum, s) => sum + s.amount, 0);
 
-        const totalSpent = fromTx + Math.max(0, subsTotal - fromSubTx);
-        const pendingAmount = pending.reduce((sum, t) => sum + (t.amount || 0), 0);
+        const totalSpent = txUsage + Math.max(0, subsTotal - fromSubTx);
 
-        const usedOnCard =
-          typeof card.currentBalance === "number" ? card.currentBalance : totalSpent;
-        const availableLimit = Math.max(0, (card.limit || 0) - usedOnCard);
+        const pendingNext = transactions
+          .filter((t) => {
+            if (
+              t.type !== "expense" ||
+              t.method !== "Cartão de Crédito" ||
+              t.account !== card.id
+            ) {
+              return false;
+            }
+            if (t.status !== "pending") return false;
+            const inst = t.installments ?? 1;
+            if (inst <= 1) return false;
+            const cur = Math.min(
+              Math.max(1, t.currentInstallment ?? 1),
+              inst,
+            );
+            const dueMonth = dateMonthPlusMonths(t.date, cur - 1);
+            return dueMonth === nextMonthKey;
+          })
+          .reduce((sum, t) => sum + (t.amount || 0), 0);
+
+        const limit = card.limit || 0;
+        const usedOnCard = totalSpent;
+        const availableLimit = Math.max(0, limit - usedOnCard);
         const utilizationRate =
-          card.limit > 0 ? (usedOnCard / card.limit) * 100 : 0;
+          limit > 0 ? (usedOnCard / limit) * 100 : 0;
 
-        const txCountMonth = cardTransactions.filter(inMonth).length;
+        const txCountMonth = transactions.filter((t) => {
+          if (t.account !== card.id || t.type !== "expense") return false;
+          return dateToMonthKey(t.date) === cardMonthKey;
+        }).length;
 
         return {
           card,
           totalSpent,
           totalReceived: 0,
-          pendingAmount,
+          pendingAmount: pendingNext,
           availableLimit,
           utilizationRate,
           transactionCount: txCountMonth,
           currentInvoice: totalSpent,
-          nextInvoice: pendingAmount,
+          nextInvoice: pendingNext,
         };
       });
 
@@ -208,7 +237,7 @@ const CardsDashboardPage: React.FC<CardsDashboardPageProps> = ({
       console.error("Erro ao calcular resumo dos cartões:", error);
       return [];
     }
-  }, [cards, transactions, subscriptions]);
+  }, [cards, transactions, subscriptions, cardMonthKey]);
 
   const formatCurrency = (value: number | undefined | null) => {
     if (value === undefined || value === null || isNaN(value)) {
@@ -320,16 +349,67 @@ const CardsDashboardPage: React.FC<CardsDashboardPageProps> = ({
             Gerencie seus limites e faturas em um só lugar.
           </p>
         </div>
-        <button
-          type="button"
-          onClick={openAddModal}
-          className="flex items-center justify-center gap-2 px-5 py-2.5 text-white text-sm font-medium rounded-lg transition-all shadow-sm"
-          style={{ backgroundColor: "var(--primary)" }}
-        >
-          <Plus className="w-4 h-4" />
-          Novo Cartão
-        </button>
+        <div className="flex flex-wrap items-center gap-2">
+          <div
+            className="flex items-center gap-1 rounded-lg border px-1 py-1"
+            style={{
+              borderColor: "var(--border)",
+              backgroundColor: "var(--card)",
+            }}
+          >
+            <button
+              type="button"
+              onClick={() => setCardMonthKey((m) => shiftMonthKey(m, -1))}
+              className="p-2 rounded-md transition-colors"
+              style={{ color: "var(--text)" }}
+              aria-label="Mês anterior"
+            >
+              <ChevronLeft className="w-4 h-4" />
+            </button>
+            <span
+              className="px-2 text-sm font-semibold capitalize min-w-[140px] text-center"
+              style={{ color: "var(--text)" }}
+            >
+              {monthLabel}
+            </span>
+            <button
+              type="button"
+              onClick={() => setCardMonthKey((m) => shiftMonthKey(m, 1))}
+              className="p-2 rounded-md transition-colors"
+              style={{ color: "var(--text)" }}
+              aria-label="Próximo mês"
+            >
+              <ChevronRight className="w-4 h-4" />
+            </button>
+            <button
+              type="button"
+              onClick={() => setCardMonthKey(getCurrentMonthKey())}
+              className="ml-1 px-2 py-1.5 text-xs font-semibold rounded-md"
+              style={{
+                color: "var(--primary)",
+                backgroundColor: "var(--bg-secondary)",
+              }}
+            >
+              Mês atual
+            </button>
+          </div>
+          <button
+            type="button"
+            onClick={openAddModal}
+            className="flex items-center justify-center gap-2 px-5 py-2.5 text-white text-sm font-medium rounded-lg transition-all shadow-sm"
+            style={{ backgroundColor: "var(--primary)" }}
+          >
+            <Plus className="w-4 h-4" />
+            Novo Cartão
+          </button>
+        </div>
       </div>
+
+      <p className="text-xs -mt-4 mb-2" style={{ color: "var(--text-muted)" }}>
+        Uso e fatura exibidos pelo mês civil (1º ao último dia). Compras parceladas
+        entram na parcela do mês correspondente; ao pagar cada parcela, o limite
+        é liberado nesse valor (saldo do cartão no servidor).
+      </p>
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <div

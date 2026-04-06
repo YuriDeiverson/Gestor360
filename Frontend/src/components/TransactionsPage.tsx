@@ -29,7 +29,10 @@ interface TransactionsPageProps {
   addTransaction: (
     transaction: Omit<Transaction, "id" | "industry">,
   ) => Promise<void>;
-  editTransaction: (transaction: Transaction) => Promise<void>;
+  editTransaction: (
+    transaction: Transaction,
+    options?: { silent?: boolean },
+  ) => Promise<void>;
   deleteTransaction: (transactionId: string) => Promise<void>;
   payInstallment?: (transaction: Transaction) => Promise<void>;
   budgets: Budget[];
@@ -68,14 +71,22 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({
   const [customEndDate, setCustomEndDate] = useState("");
   const [selectedInvoiceMonth, setSelectedInvoiceMonth] = useState("");
   const [selectedCard, setSelectedCard] = useState<string>("all");
-  /** Filtro de mês (YYYY-MM) na aba Gastos — alinhado ao layout de referência. */
-  const [expenseMonthFilter, setExpenseMonthFilter] = useState<string>("all");
+  /** Filtro de mês (YYYY-MM) na aba Gastos; padrão = mês civil atual. */
+  const [expenseMonthFilter, setExpenseMonthFilter] = useState(() => {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+  });
   const [expenseListPage, setExpenseListPage] = useState(1);
 
   const [incomeFilterMonth, setIncomeFilterMonth] = useState(() => {
     const d = new Date();
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
   });
+
+  const currentMonthKey = useMemo(() => {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+  }, []);
   /** Filtro exclusivo da aba Receitas (categorias fixas). */
   const [incomeCategoryFilter, setIncomeCategoryFilter] = useState<string>("all");
 
@@ -362,7 +373,8 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({
     selectedMonthYear !== "" ||
     selectedInvoiceMonth !== "" ||
     (customStartDate && customEndDate) ||
-    (mode === "expense" && expenseMonthFilter !== "all");
+    (mode === "expense" &&
+      (expenseMonthFilter === "all" || expenseMonthFilter !== currentMonthKey));
 
   const clearFilters = () => {
     setSearchTerm("");
@@ -386,7 +398,10 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({
       setIncomeCategoryFilter("all");
     }
     if (mode === "expense") {
-      setExpenseMonthFilter("all");
+      const d = new Date();
+      setExpenseMonthFilter(
+        `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`,
+      );
     }
   };
 
@@ -434,34 +449,45 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({
   const incomeMonthLabel =
     monthOptionsIncome.find((m) => m.value === incomeFilterMonth)?.label ?? "";
 
-  const currentMonthKey = useMemo(() => {
-    const d = new Date();
-    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
-  }, []);
-
   const expenseMonthOptions = useMemo(() => {
     const set = new Set<string>();
+    set.add(currentMonthKey);
     scopeTransactions.forEach((t) => {
       const m = t.date?.slice(0, 7);
       if (m) set.add(m);
     });
     return Array.from(set).sort((a, b) => b.localeCompare(a));
-  }, [scopeTransactions]);
+  }, [scopeTransactions, currentMonthKey]);
 
   const expenseBudgetNames = useMemo(
     () => budgets.filter((b) => b.type === "expense").map((b) => b.name),
     [budgets],
   );
 
-  const expenseHeaderMonthTotal = useMemo(() => {
-    return scopeTransactions
-      .filter((t) => t.date?.startsWith(currentMonthKey))
-      .reduce((s, t) => s + t.amount, 0);
-  }, [scopeTransactions, currentMonthKey]);
-
-  const expenseHeaderMonthCount = useMemo(() => {
-    return scopeTransactions.filter((t) => t.date?.startsWith(currentMonthKey)).length;
-  }, [scopeTransactions, currentMonthKey]);
+  const expenseHeaderStats = useMemo(() => {
+    const list =
+      expenseMonthFilter === "all"
+        ? scopeTransactions
+        : scopeTransactions.filter(
+            (t) => t.date?.slice(0, 7) === expenseMonthFilter,
+          );
+    const total = list.reduce((s, t) => s + t.amount, 0);
+    const count = list.length;
+    let periodLabel: string;
+    if (expenseMonthFilter === "all") {
+      periodLabel = "Todos os períodos";
+    } else if (expenseMonthFilter === currentMonthKey) {
+      periodLabel = "Este mês";
+    } else {
+      const [y, mo] = expenseMonthFilter.split("-").map(Number);
+      const raw = new Date(y, mo - 1, 1).toLocaleDateString("pt-BR", {
+        month: "long",
+        year: "numeric",
+      });
+      periodLabel = raw.charAt(0).toUpperCase() + raw.slice(1);
+    }
+    return { total, count, periodLabel };
+  }, [scopeTransactions, expenseMonthFilter, currentMonthKey]);
 
   return (
     <div className={mode === "income" ? "space-y-7" : "space-y-6"}>
@@ -814,9 +840,9 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({
                 Despesas
               </h1>
               <p className="mt-0.5 text-sm" style={{ color: "var(--text-muted)" }}>
-                Este mês:{" "}
+                {expenseHeaderStats.periodLabel}:{" "}
                 <span className="font-semibold" style={{ color: "var(--text)" }}>
-                  {expenseHeaderMonthTotal.toLocaleString("pt-BR", {
+                  {expenseHeaderStats.total.toLocaleString("pt-BR", {
                     style: "currency",
                     currency: "BRL",
                   })}
@@ -824,7 +850,7 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({
                 <span className="mx-1.5" style={{ color: "var(--border)" }}>
                   ·
                 </span>
-                <span>{expenseHeaderMonthCount} transações</span>
+                <span>{expenseHeaderStats.count} transações</span>
               </p>
             </div>
             <div className="flex flex-wrap gap-2">
@@ -909,7 +935,7 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({
             </select>
             {(filterCategory !== "all" ||
               selectedCard !== "all" ||
-              expenseMonthFilter !== "all" ||
+              expenseMonthFilter !== currentMonthKey ||
               searchTerm) && (
               <div className="ml-1 text-xs" style={{ color: "var(--text-muted)" }}>
                 {filteredTransactions.length} resultado(s) ·{" "}

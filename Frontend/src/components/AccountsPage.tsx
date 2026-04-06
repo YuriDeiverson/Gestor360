@@ -379,7 +379,7 @@ const AccountsPage: React.FC<AccountsPageProps> = ({
                 return (
                   <div
                     key={sub.id}
-                    className="group flex items-center gap-4 rounded-xl border p-4 transition-colors"
+                    className="flex items-center gap-4 rounded-xl border p-4 transition-colors"
                     style={{
                       borderColor: "var(--border)",
                       backgroundColor: "var(--card)",
@@ -415,24 +415,32 @@ const AccountsPage: React.FC<AccountsPageProps> = ({
                     <p className="shrink-0 text-sm font-bold" style={{ color: "var(--danger-light)" }}>
                       {fmt(sub.amount)}/mês
                     </p>
-                    <div className="flex shrink-0 gap-1 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 sm:transition-opacity">
+                    <div
+                      className="flex shrink-0 items-center gap-0.5 rounded-xl border p-0.5 touch-manipulation"
+                      style={{
+                        borderColor: "var(--border)",
+                        backgroundColor: "var(--bg-secondary)",
+                      }}
+                      role="group"
+                      aria-label="Ações da assinatura"
+                    >
                       <button
                         type="button"
                         onClick={() => openEdit(sub)}
-                        className="rounded-lg p-1.5"
+                        className="flex h-10 w-10 items-center justify-center rounded-lg sm:h-9 sm:w-9"
                         style={{ color: "var(--text-muted)" }}
                         title="Editar"
-                        aria-label="Editar"
+                        aria-label="Editar assinatura"
                       >
                         <Pencil className="h-4 w-4" />
                       </button>
                       <button
                         type="button"
                         onClick={() => setPendingDelete(sub)}
-                        className="rounded-lg p-1.5"
+                        className="flex h-10 w-10 items-center justify-center rounded-lg sm:h-9 sm:w-9"
                         style={{ color: "var(--danger)" }}
                         title="Excluir"
-                        aria-label="Excluir"
+                        aria-label="Excluir assinatura"
                       >
                         <Trash2 className="h-4 w-4" />
                       </button>
@@ -571,10 +579,7 @@ const AccountsPage: React.FC<AccountsPageProps> = ({
                 <h2 className="text-xl font-bold" style={{ color: "var(--text)" }}>
                   {editing ? "Editar assinatura" : "Nova assinatura"}
                 </h2>
-                <p className="mt-1 text-sm" style={{ color: "var(--text-muted)" }}>
-                  Logos e imagens extras são configurados em{" "}
-                  <code className="text-[11px]">subscriptionPresets.ts</code>.
-                </p>
+               
 
                 <form onSubmit={handleSubmit} className="mt-6 space-y-4">
                   <div>
