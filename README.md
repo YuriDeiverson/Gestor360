@@ -35,7 +35,7 @@ Um dashboard financeiro moderno e responsivo construído com React, TypeScript e
 
 ```
 Dashboard-Financeiro/
-├── Frontend/                 # Aplicação React
+├── Frontend/                 # Aplicação web (React + Vite)
 │   ├── src/
 │   │   ├── components/      # Componentes React
 │   │   ├── hooks/           # Custom hooks
@@ -43,11 +43,15 @@ Dashboard-Financeiro/
 │   │   └── assets/          # Recursos estáticos
 │   ├── public/              # Arquivos públicos
 │   └── dist/                # Build de produção
-└── backend/                 # API Node.js
+├── mobile/                  # App nativo (Expo / React Native) — mesma API
+│   └── README.md            # Como rodar, APK (EAS), variável EXPO_PUBLIC_API_URL
+└── backend/                 # API Node.js (única para web e mobile)
     ├── server.ts            # Servidor principal
     ├── auth.ts              # Serviços de autenticação
     └── *.sql                # Scripts de banco de dados
 ```
+
+O **backend** é compartilhado: o site (`Frontend/`) e o aplicativo (`mobile/`) autenticam e consomem os mesmos endpoints (`/api/auth/*`, `/api/transacoes`, etc.). Detalhes e build de **APK** estão em [`mobile/README.md`](mobile/README.md).
 
 ## 🛠️ Instalação e Configuração
 

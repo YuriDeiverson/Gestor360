@@ -111,12 +111,7 @@ export async function payInstallmentHandler(
         ? String(row.account).trim()
         : "";
 
-    if (
-      methodStr === "Cartão de Crédito" &&
-      accountStr &&
-      Number.isFinite(valorNum) &&
-      cur >= 2
-    ) {
+    if (methodStr === "Cartão de Crédito" && accountStr && Number.isFinite(installmentValue)) {
       try {
         const { data: card } = await supabaseAdmin
           .from("cards")
@@ -124,7 +119,10 @@ export async function payInstallmentHandler(
           .eq("id", accountStr)
           .single();
         if (card) {
-          const newBal = (card.current_balance || 0) + valorNum;
+          const newBal = Math.max(
+            0,
+            (card.current_balance || 0) - installmentValue,
+          );
           await supabaseAdmin
             .from("cards")
             .update({ current_balance: newBal })
@@ -402,9 +400,15 @@ router.post("/", authMiddleware, async (req: AuthenticatedRequest, res) => {
         if (cardError) {
           console.error("❌ Erro ao buscar cartão:", cardError);
         } else if (card) {
-          // Atualizar saldo atual (somar valor da despesa)
-          const newBalance = (card.current_balance || 0) + valorNum;
-          
+          const totalPurchase =
+            insertData.totalamount != null &&
+            !Number.isNaN(Number(insertData.totalamount))
+              ? Number(insertData.totalamount)
+              : valorNum * installmentsNum;
+          const balanceDelta =
+            installmentsNum > 1 ? totalPurchase : valorNum;
+          const newBalance = (card.current_balance || 0) + balanceDelta;
+
           const { error: updateError } = await supabaseAdmin
             .from("cards")
             .update({ current_balance: newBalance })

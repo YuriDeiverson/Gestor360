@@ -12,6 +12,7 @@ import transacoesRoutes, {
 import metasRoutes from "./routes/metas";
 import cardsRoutes from "./routes/cards";
 import subscriptionsRoutes from "./routes/subscriptions";
+import logosRoutes from "./routes/logos";
 
 // ====================
 // ENV
@@ -258,6 +259,7 @@ app.post("/api/invite/:token/accept", async (req, res) => {
 // ====================
 // ROTAS DE DOMÍNIO
 // ====================
+app.use("/api/logos", logosRoutes);
 app.use("/api/budgets", budgetsRoutes);
 /** Rota explícita: garante POST pay-installment (evita 404 com sub-router em alguns ambientes). */
 app.post(
@@ -346,7 +348,8 @@ export default app;
 // Start server only in development
 if (process.env.NODE_ENV !== "production") {
   const PORT = process.env.PORT || 3001;
-  app.listen(PORT, () => {
-    console.log(`🚀 Server running on http://localhost:${PORT}`);
+  // 0.0.0.0: aceita conexões do celular na mesma rede (Wi‑Fi), não só localhost
+  app.listen(PORT, "0.0.0.0", () => {
+    console.log(`🚀 Server: http://localhost:${PORT} | LAN: http://<seu-ip>:${PORT}`);
   });
 }
