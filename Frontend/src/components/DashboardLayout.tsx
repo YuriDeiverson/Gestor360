@@ -16,7 +16,7 @@ const DashboardLayout: React.FC<LayoutProps> = ({ children }) => {
   };
 
   return (
-    <div className="min-h-screen flex transition-colors duration-300" style={{ backgroundColor: 'var(--bg)' }}>
+    <div className="layout-responsive">
       {/* SIDEBAR */}
       <Sidebar
         isOpen={isSidebarOpen}
@@ -28,13 +28,8 @@ const DashboardLayout: React.FC<LayoutProps> = ({ children }) => {
         logout={() => console.log("logout")}
       />
 
-      {/* MAIN */}
-      <div
-        className={`flex flex-col flex-1 transition-all duration-300
-          ${isSidebarCollapsed ? "lg:ml-20" : "lg:ml-72"}
-          ${isSidebarOpen ? "ml-0 lg:ml-0" : ""}`}
-      >
-        {/* NAVBAR */}
+      {/* HEADER RESPONSIVO */}
+      <header className="header-responsive">
         <Navbar
           user={{
             name: "Usuário",
@@ -42,14 +37,14 @@ const DashboardLayout: React.FC<LayoutProps> = ({ children }) => {
           }}
           toggleSidebar={handleToggleSidebar}
         />
+      </header>
 
-        {/* CONTEÚDO */}
-        <main className="p-3 sm:p-4 lg:p-6 xl:p-8 min-h-screen">
-          <div className="max-w-7xl mx-auto">
-            {children}
-          </div>
-        </main>
-      </div>
+      {/* MAIN CONTENT */}
+      <main className="main-responsive">
+        <div className="container">
+          {children}
+        </div>
+      </main>
     </div>
   );
 };

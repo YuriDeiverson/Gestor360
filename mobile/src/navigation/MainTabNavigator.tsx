@@ -19,7 +19,7 @@ function tabIcon(name: IconName, focused: boolean, color: string, size: number) 
 
 export function MainTabNavigator() {
   const insets = useSafeAreaInsets();
-  const padBottom = Math.max(insets.bottom, 10);
+  const padBottom = Math.max(insets.bottom, 16);
 
   return (
     <Tab.Navigator
@@ -29,15 +29,33 @@ export function MainTabNavigator() {
           backgroundColor: colors.tabBar,
           borderTopColor: colors.border,
           borderTopWidth: 1,
-          height: 58 + padBottom,
+          height: 64 + padBottom,
           paddingBottom: padBottom,
-          paddingTop: 6,
-          paddingHorizontal: 4,
+          paddingTop: 8,
+          paddingHorizontal: 8,
+          /* Sombra melhorada */
+          shadowColor: '#000',
+          shadowOffset: { width: 0, height: -2 },
+          shadowOpacity: 0.1,
+          shadowRadius: 4,
+          elevation: 8,
         },
         tabBarActiveTintColor: colors.primary,
         tabBarInactiveTintColor: colors.textMuted,
-        tabBarLabelStyle: typography.tabLabel,
-        tabBarItemStyle: { paddingTop: 4 },
+        tabBarLabelStyle: {
+          ...typography.tabLabel,
+          /* Melhor legibilidade */
+          fontSize: 11,
+          fontWeight: "600",
+        },
+        tabBarItemStyle: { 
+          paddingTop: 6,
+          /* Área de toque maior */
+          minHeight: 60,
+        },
+        /* Animações suaves */
+        tabBarHideOnKeyboard: true,
+        tabBarAllowFontScaling: true,
       }}
     >
       <Tab.Screen

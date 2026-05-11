@@ -7,6 +7,7 @@ import {
   StyleSheet,
   ActivityIndicator,
   RefreshControl,
+  Platform,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
@@ -372,8 +373,18 @@ export function DashboardScreen() {
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: colors.bg, paddingHorizontal: 20 },
-  topBar: { marginBottom: 8 },
+  root: { 
+    flex: 1, 
+    backgroundColor: colors.bg, 
+    paddingHorizontal: 16,
+    /* Safe areas */
+    paddingBottom: Platform.OS === 'ios' ? 0 : 16,
+  },
+  topBar: { 
+    marginBottom: 12,
+    /* Espaçamento seguro para header */
+    paddingTop: Platform.OS === 'ios' ? 8 : 16,
+  },
   brandRow: {
     flexDirection: "row",
     alignItems: "center",
@@ -389,6 +400,12 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     borderWidth: 1,
     borderColor: "rgba(59,130,246,0.35)",
+    /* Sombra melhorada */
+    shadowColor: colors.primary,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 3,
   },
   avatarText: {
     fontSize: 17,
@@ -402,43 +419,74 @@ const styles = StyleSheet.create({
     letterSpacing: -0.3,
   },
   greeting: {
-    ...typography.hero,
+    ...typography.hero, 
     marginBottom: 12,
+    /* Espaçamento responsivo */
+    marginTop: Platform.OS === 'ios' ? 4 : 8,
   },
   iconBtn: {
-    paddingVertical: 8,
-    paddingHorizontal: 12,
+    paddingVertical: 10,
+    paddingHorizontal: 14,
     borderRadius: radii.sm,
     backgroundColor: colors.surface2,
     borderWidth: 1,
     borderColor: colors.border,
+    /* Área de toque maior */
+    minWidth: 44,
+    minHeight: 44,
+    alignItems: "center",
+    justifyContent: "center",
   },
   iconBtnText: {
     color: colors.textSecondary,
     fontSize: 13,
     fontWeight: "600",
   },
-  centered: { flex: 1, justifyContent: "center", alignItems: "center" },
-  scrollContent: { paddingBottom: 100 },
-  quickTitle: { marginBottom: 12 },
+  centered: { 
+    flex: 1, 
+    justifyContent: "center", 
+    alignItems: "center",
+    /* Padding seguro */
+    paddingHorizontal: 16,
+  },
+  scrollContent: { 
+    paddingBottom: 120,
+    /* Padding extra para scrolling suave */
+    paddingHorizontal: 4,
+  },
+  quickTitle: { 
+    marginBottom: 12,
+    /* Espaçamento consistente */
+    marginTop: 8,
+  },
   quickGrid: {
     flexDirection: "row",
     flexWrap: "wrap",
     gap: 10,
     marginBottom: 22,
     justifyContent: "space-between",
+    /* Alinhamento melhorado */
+    paddingHorizontal: 2,
   },
   quickCell: {
     width: "31%",
     minWidth: "30%",
     backgroundColor: colors.surface,
     borderRadius: radii.md,
-    paddingVertical: 14,
+    paddingVertical: 16,
     paddingHorizontal: 8,
     alignItems: "center",
     borderWidth: 1,
     borderColor: colors.border,
     marginBottom: 4,
+    /* Feedback tátil melhorado */
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 2,
+    /* Área de toque maior */
+    minHeight: 80,
   },
   quickIconWrap: {
     width: 44,
@@ -453,6 +501,8 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     color: colors.textSecondary,
     textAlign: "center",
+    /* Melhor legibilidade */
+    lineHeight: 14,
   },
   summaryCard: {
     backgroundColor: colors.surface,
@@ -461,6 +511,12 @@ const styles = StyleSheet.create({
     marginBottom: 24,
     borderWidth: 1,
     borderColor: colors.border,
+    /* Sombra melhorada */
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    elevation: 4,
   },
   statGrid: {
     flexDirection: "row",
@@ -472,40 +528,97 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: colors.surface2,
     borderRadius: radii.md,
-    padding: 14,
+    padding: 16,
     borderWidth: 1,
     borderColor: colors.border,
+    /* Padding maior para melhor toque */
+    minHeight: 70,
   },
-  statLabel: { ...typography.caption, marginBottom: 6 },
-  statValue: { fontSize: 17, fontWeight: "700" },
+  statLabel: { 
+    ...typography.caption, 
+    marginBottom: 6,
+    /* Espaçamento melhorado */
+    fontSize: 11,
+  },
+  statValue: { 
+    fontSize: 18, 
+    fontWeight: "700",
+    /* Melhor destaque */
+    lineHeight: 22,
+  },
   balanceRow: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    paddingTop: 4,
+    paddingTop: 8,
     borderTopWidth: 1,
     borderTopColor: colors.border,
   },
-  balanceLabel: { ...typography.body, color: colors.textSecondary },
-  balanceValue: { fontSize: 22, fontWeight: "800", letterSpacing: -0.5 },
-  footnote: { ...typography.caption, marginTop: 14, textAlign: "center" },
-  sectionLabel: { marginBottom: 12 },
+  balanceLabel: { 
+    ...typography.body, 
+    color: colors.textSecondary,
+    /* Fonte um pouco maior */
+    fontSize: 14,
+  },
+  balanceValue: { 
+    fontSize: 24, 
+    fontWeight: "800", 
+    letterSpacing: -0.5,
+    /* Destaque melhorado */
+    lineHeight: 28,
+  },
+  footnote: { 
+    ...typography.caption, 
+    marginTop: 16, 
+    textAlign: "center",
+    /* Espaçamento melhorado */
+    paddingHorizontal: 8,
+  },
+  sectionLabel: { 
+    marginBottom: 12,
+    /* Espaçamento consistente */
+    marginTop: 8,
+  },
   txRow: {
     flexDirection: "row",
     alignItems: "center",
-    paddingVertical: 14,
-    paddingHorizontal: 4,
+    paddingVertical: 16,
+    paddingHorizontal: 8,
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: colors.border,
     gap: 12,
+    /* Área de toque maior */
+    minHeight: 60,
   },
   txDot: {
     width: 8,
     height: 8,
     borderRadius: 4,
   },
-  txDesc: { color: colors.text, fontSize: 15, fontWeight: "500" },
-  txMeta: { color: colors.textMuted, fontSize: 12, marginTop: 3 },
-  txKind: { color: colors.textMuted },
-  txAmount: { fontSize: 15, fontWeight: "700" },
+  txDesc: { 
+    color: colors.text, 
+    fontSize: 15, 
+    fontWeight: "500",
+    /* Melhor legibilidade */
+    lineHeight: 18,
+    flex: 1,
+  },
+  txMeta: { 
+    color: colors.textMuted, 
+    fontSize: 12, 
+    marginTop: 2,
+    /* Espaçamento melhorado */
+    lineHeight: 14,
+  },
+  txKind: { 
+    color: colors.textMuted,
+    /* Destaque sutil */
+    fontWeight: "500",
+  },
+  txAmount: { 
+    fontSize: 16, 
+    fontWeight: "700",
+    /* Destaque melhorado */
+    lineHeight: 20,
+  },
 });

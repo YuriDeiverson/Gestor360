@@ -1202,8 +1202,8 @@ const DashboardPage: React.FC = () => {
         />
 
         {/* Conteúdo Principal - Responsivo */}
-        <main className="flex-1 overflow-y-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6">
-          <div className="max-w-7xl mx-auto">
+        <main className="main-responsive">
+          <div className="container">
             {/* Filtros - Apenas na página dashboard */}
             {activePage === "dashboard" && <Header categories={categories as any} />}
 

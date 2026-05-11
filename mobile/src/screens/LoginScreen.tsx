@@ -107,9 +107,17 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: colors.bg,
     justifyContent: "center",
-    padding: 24,
+    padding: 20,
+    /* Safe areas para dispositivos modernos */
+    paddingTop: Platform.OS === 'ios' ? 0 : 20,
   },
-  inner: { width: "100%", maxWidth: 400, alignSelf: "center" },
+  inner: { 
+    width: "100%", 
+    maxWidth: 400, 
+    alignSelf: "center",
+    /* Garantir espaçamento seguro */
+    paddingHorizontal: Platform.OS === 'ios' ? 0 : 16,
+  },
   hero: { marginBottom: 32 },
   logoMark: {
     width: 64,
@@ -121,6 +129,12 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "rgba(59,130,246,0.35)",
     marginBottom: 16,
+    /* Sombra sutil para destaque */
+    shadowColor: colors.primary,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 3,
   },
   brandTitle: {
     fontSize: 24,
@@ -140,6 +154,12 @@ const styles = StyleSheet.create({
     marginBottom: 12,
     borderWidth: 1,
     borderColor: colors.border,
+    /* Melhor feedback visual */
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 1,
   },
   button: {
     backgroundColor: colors.primary,
@@ -147,9 +167,33 @@ const styles = StyleSheet.create({
     padding: 17,
     alignItems: "center",
     marginTop: 8,
+    /* Melhor feedback tátil */
+    shadowColor: colors.primary,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 4,
   },
-  buttonDisabled: { opacity: 0.65 },
-  buttonText: { color: "#fff", fontSize: 16, fontWeight: "700" },
-  link: { marginTop: 22, alignItems: "center" },
-  linkText: { color: colors.primary, fontSize: 15, fontWeight: "600" },
+  buttonDisabled: { 
+    opacity: 0.65,
+    shadowOpacity: 0,
+    elevation: 0,
+  },
+  buttonText: { 
+    color: "#fff", 
+    fontSize: 16, 
+    fontWeight: "700" 
+  },
+  link: { 
+    marginTop: 22, 
+    alignItems: "center",
+    /* Área de toque maior */
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+  },
+  linkText: { 
+    color: colors.primary, 
+    fontSize: 15, 
+    fontWeight: "600" 
+  },
 });
